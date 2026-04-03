@@ -19,9 +19,7 @@
 - 要交付什么产物
 - 怎样判断这个步骤完成
 
-## 当前推进顺序
-
-1. [step-00-tech-foundation.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-00-tech-foundation.md)
+## 当前下一步1. [step-00-tech-foundation.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-00-tech-foundation.md)
 2. [step-01-desktop-shell-and-avatar.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-01-desktop-shell-and-avatar.md)
 3. [step-02-capture-and-submit.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-02-capture-and-submit.md)
 4. [step-03-local-conversations-and-archive.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-03-local-conversations-and-archive.md)

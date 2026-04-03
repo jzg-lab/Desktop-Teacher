@@ -1,0 +1,4 @@
+interface:
+  display_name: "Docs Refresh"
+  short_description: "Refresh authoritative docs through routed modes and foundation checks"
+  default_prompt: "Use the Docs Refresh workflow to treat the repository as the record system, start from AGENTS.md as a map, resolve the directory containing this skill, run the bundled collector from that skill directory when possible, read both `doc_system_mode` and `knowledge_phase` from the collector output, load the matching mode file, use the shared foundation checklist when early-project gaps still exist, update the smallest authoritative documents needed, and explain what changed or why no documentation update was needed."
