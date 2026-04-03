@@ -35,10 +35,10 @@
 
 当前最该开始的是：
 
-- [step-00-tech-foundation.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-00-tech-foundation.md)
+- [step-01-desktop-shell-and-avatar.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-01-desktop-shell-and-avatar.md)
 
 原因：
 
-- 技术栈不定，后面所有实现都会返工。
-- provider 适配层不定，模型接入会直接耦合。
-- 本地存储方案不定，会话与归档设计无法稳定。
+- Step-00 技术选型已全部完成（Tauri 2 + OpenAI-compatible + 文件制存储）。
+- 仓库骨架已搭建，TypeScript 编译通过。
+- 下一步需要实现桌面壳、系统托盘图标和主窗口 UI。

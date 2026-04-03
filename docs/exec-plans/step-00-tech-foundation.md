@@ -1,6 +1,6 @@
 # 步骤 00：技术底座与仓库骨架
 
-状态：Next  
+状态：Done  
 目标版本：V0 / MVP
 
 ## 目标
@@ -12,51 +12,78 @@
 - 本地历史归档存储方案
 - 仓库目录结构与配置方式
 
-## 依赖
+## 已拍板的技术决策
 
-- [docs/prd-v0.md](/mnt/e/my_github/Desktop-Teacher/docs/prd-v0.md)
-- [docs/srs-v0.md](/mnt/e/my_github/Desktop-Teacher/docs/srs-v0.md)
+### 1. 桌面壳：Tauri 2
 
-## 本步骤要解决的问题
+- 后台常驻场景内存占用远小于 Electron
+- 打包体积小（~10MB vs Electron ~80MB）
+- 系统托盘、全局快捷键、透明覆盖窗均通过插件支持
+- 前端使用 React + TypeScript + Vite，Tauri 对 TS 生态完全兼容
+- Rust 后续可用于截图、本地操作等高性能模块
 
-- 首版桌面应用到底用什么壳。
-- OpenAI 和 Qwen 如何在上层保持统一接口。
-- 历史会话本地怎么存，后面才不会重写。
-- 代码目录如何切开，避免 UI、路由、模型全耦合。
+### 2. Provider 适配层：统一 OpenAI-compatible 接口
 
-## 任务
+- Qwen/DashScope 官方提供 OpenAI-compatible 端点（chat/completions）
+- 上层业务通过 `UnifiedLLMClient` 调用，不感知具体 provider
+- 每个 provider 封装为 `ProviderAdapter` 实现，支持 chat 和 chatStream
+- 新增 provider 只需实现 `ProviderAdapter` 接口并注册
 
-1. 选定 Windows 桌面壳技术栈。
-2. 选定 provider 适配策略：
-   - 统一兼容协议优先
-   - 或分别维护原生适配器
-3. 选定本地归档方案：
-   - SQLite
-   - 或文件制
-4. 设计首版目录结构。
-5. 定义环境变量和配置文件约定。
-6. 明确最小可启动壳应用应包含哪些模块。
+### 3. 本地归档：文件制 + 轻量索引
 
-## 产出
+- 每条会话一个目录：`meta.json` + `messages.json` + `attachments/`
+- 根目录维护 `conversations-index.json` 加速历史列表加载
+- 删除操作直接 `rm -rf` 目录，天然级联删除
+- 通过 Tauri Rust 后端执行文件系统操作
 
-- 技术选型结论
-- 仓库目录结构草案
-- 配置约定草案
-- 最小壳应用实现任务清单
+## 目录结构
+
+```
+Desktop-Teacher/
+├── src/                        # 前端源码 (React + TS)
+│   ├── services/
+│   │   ├── llm/                # Provider 适配层
+│   │   │   ├── types.ts        # 统一类型定义
+│   │   │   ├── adapter.ts      # ProviderAdapter 接口
+│   │   │   ├── openai.ts       # OpenAI 适配器
+│   │   │   ├── qwen.ts         # Qwen/DashScope 适配器
+│   │   │   ├── client.ts       # UnifiedLLMClient 统一入口
+│   │   │   └── index.ts        # 公共导出
+│   │   └── storage/            # 本地会话存储
+│   │       ├── types.ts        # 存储类型定义
+│   │       ├── conversation.ts # 会话 CRUD（通过 Tauri invoke）
+│   │       └── index.ts        # 公共导出
+│   ├── components/             # React 组件
+│   ├── hooks/                  # React hooks
+│   ├── App.tsx
+│   └── main.tsx
+├── src-tauri/                  # Tauri Rust 后端
+│   ├── src/
+│   │   ├── lib.rs              # 存储命令 + 应用入口
+│   │   └── main.rs             # Windows 入口
+│   ├── Cargo.toml
+│   └── tauri.conf.json
+├── docs/                       # 项目文档
+│   ├── prd-v0.md
+│   ├── srs-v0.md
+│   └── exec-plans/
+├── .env.example                # 环境变量模板
+├── package.json
+├── tsconfig.json
+└── vite.config.ts
+```
+
+## 配置约定
+
+- 环境变量通过 `.env` 文件管理，以 `VITE_` 前缀暴露给前端
+- Provider 配置包括 API Key、Base URL、默认模型
+- Tauri Rust 后端通过 `app_data_dir()` 定位存储根目录
 
 ## 完成标准
 
-- 三个关键技术问题都有明确结论
-- 后续步骤可以基于该结构继续实现
-- 不再存在“先写了再说”的技术漂移
-
-## 验证
-
-- 复核选型是否覆盖 PRD/SRS 的 V0 约束
-- 确认后续步骤都能引用这里的结论
-
-## 当前需要拍板
-
-1. Windows 壳选 `Electron` 还是 `Tauri`
-2. provider 适配层先做统一兼容接口还是双原生适配器
-3. 本地历史归档选 `SQLite` 还是文件制
+- [x] 三个关键技术问题都有明确结论
+- [x] 仓库骨架已搭建，目录结构已创建
+- [x] Provider 适配层骨架已实现（TypeScript 编译通过）
+- [x] 本地存储模块骨架已实现（前端 TS + Rust 命令）
+- [x] 配置文件约定已定义（.env.example）
+- [x] 后续步骤可以基于该结构继续实现
