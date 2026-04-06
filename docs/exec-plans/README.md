@@ -19,8 +19,8 @@
 - 要交付什么产物
 - 怎样判断这个步骤完成
 
-## 当前下一步1. [step-00-tech-foundation.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-00-tech-foundation.md)
-2. [step-01-desktop-shell-and-avatar.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-01-desktop-shell-and-avatar.md)
+## 当前下一步1. ~~step-00-tech-foundation.md~~ ✓
+2. ~~step-01-desktop-shell-and-avatar.md~~ ✓
 3. [step-02-capture-and-submit.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-02-capture-and-submit.md)
 4. [step-03-local-conversations-and-archive.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-03-local-conversations-and-archive.md)
 5. [step-04-model-adapter-and-answering.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-04-model-adapter-and-answering.md)
@@ -33,10 +33,10 @@
 
 当前最该开始的是：
 
-- [step-01-desktop-shell-and-avatar.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-01-desktop-shell-and-avatar.md)
+- [step-02-capture-and-submit.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-02-capture-and-submit.md)
 
 原因：
 
-- Step-00 技术选型已全部完成（Tauri 2 + OpenAI-compatible + 文件制存储）。
-- 仓库骨架已搭建，TypeScript 编译通过。
-- 下一步需要实现桌面壳、系统托盘图标和主窗口 UI。
+- Step-00 技术选型已完成。
+- Step-01 桌面壳、系统托盘图标和侧边窗骨架已实现。
+- 下一步需要实现截图触发、确认与提交流程。

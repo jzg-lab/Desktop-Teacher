@@ -1,3 +1,5 @@
+mod tray;
+
 use std::fs;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
@@ -230,6 +232,7 @@ pub fn run() {
                         .build(),
                 )?;
             }
+            tray::create_tray(app.handle())?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
