@@ -38,7 +38,7 @@ docs/              # 产品文档
 
 - 产品需求：[docs/prd-v0.md](docs/prd-v0.md)
 - 系统规格：[docs/srs-v0.md](docs/srs-v0.md)
-- 执行计划索引：[docs/exec-plans/README.md](docs/exec-plans/README.md)
+- 执行计划索引：[docs/exec-plans/index.md](docs/exec-plans/index.md)
 
 ## V0 关键约束
 

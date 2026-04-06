@@ -1,0 +1,265 @@
+# 架构文档
+
+状态：Active
+范围：V0 / MVP
+
+本文档描述 Desktop Teacher 的实际系统架构、层级边界、数据实体生命周期和失败边界。
+产品需求见 [prd-v0.md](prd-v0.md)，系统需求见 [srs-v0.md](srs-v0.md)。
+
+## 1. 系统概览
+
+Desktop Teacher 是一个基于 Tauri 2 的 Windows 桌面应用，由两层组成：
+
+- **Rust 后端**（`src-tauri/`）：操作系统集成（全局快捷键、截图、系统托盘）+ 本地文件存储。
+- **React 前端**（`src/`）：UI 渲染 + LLM 适配层（在 WebView 中直接发起 HTTP 调用）。
+
+两层通过 Tauri 的 `invoke` / `listen` 机制通信，不经过 HTTP。
+
+```
+┌─────────────────────────────────────────────────────┐
+│                    用户 (Windows)                     │
+└───────────────┬─────────────────────┬───────────────┘
+                │ 全局快捷键           │ 侧边窗交互
+┌───────────────▼──────────┐  ┌────────▼──────────────┐
+│   Rust 后端 (Tauri 2)    │  │  React 前端 (WebView)  │
+│                          │  │                        │
+│  ┌─ tray.rs ──────────┐  │  │  ┌─ SidebarApp ─────┐ │
+│  │  系统托盘 / 窗口管理 │  │  │  │  聊天主界面       │ │
+│  └────────────────────┘  │  │  └──────────────────┘ │
+│  ┌─ capture.rs ────────┐  │  │  ┌─ CaptureOverlay ─┐ │
+│  │  截图 / 裁剪 / 覆盖层 │◄─┼──┼─►│  区域选择 UI     │ │
+│  └────────────────────┘  │  │  └──────────────────┘ │
+│  ┌─ lib.rs (存储命令) ──┐  │  │  ┌─ CaptureConfirm ┐ │
+│  │  会话 CRUD / Turn 追加│◄─┼──┼─►│  确认 + 提交     │ │
+│  └────────────────────┘  │  │  └──────────────────┘ │
+│                          │  │  ┌─ services/llm/ ──┐ │
+│  本地文件系统             │  │  │  统一 LLM 适配层  │──────► OpenAI / Qwen API
+│  (JSON + 附件目录)       │  │  └──────────────────┘ │
+└──────────────────────────┘  └────────────────────────┘
+```
+
+## 2. 层级职责
+
+### 2.1 Rust 后端
+
+| 模块 | 文件 | 职责 |
+|------|------|------|
+| 应用入口 | `lib.rs` | 组装插件、注册命令、启动窗口 |
+| 截图 | `capture.rs` | 屏幕截图、区域裁剪、窗口定位、覆盖层生命周期（仅 Windows） |
+| 窗口工具 | `window_utils.rs` | 侧边窗/覆盖层定位、显示/隐藏 |
+| 系统托盘 | `tray.rs` | 托盘图标、右键菜单、窗口唤起 |
+| 存储命令 | `lib.rs` 内 | 会话索引读写、会话 CRUD、Turn 追加 |
+| 数据目录 | 自动管理 | `app_data_dir/conversations/` |
+
+**后端暴露的 Tauri 命令**：
+
+| 命令 | 功能 | 前端调用方 |
+|------|------|-----------|
+| `storage_load_index` | 加载会话列表索引 | storage service |
+| `storage_save_index` | 保存索引 | storage service |
+| `storage_create_conversation` | 创建新会话（含目录结构） | storage service |
+| `storage_get_conversation` | 获取单条会话元数据 | storage service |
+| `storage_update_conversation_title` | 更新会话标题 | storage service |
+| `storage_delete_conversation` | 删除会话及目录 | storage service |
+| `storage_load_turns` | 加载会话的所有 Turn | storage service |
+| `storage_append_turn` | 追加一条 Turn | storage service |
+| `capture_get_screenshot` | 获取当前截图（base64 PNG） | CaptureOverlay |
+| `capture_crop_region` | 按坐标裁剪截图 | CaptureOverlay |
+| `capture_window_at_point` | 截取指定坐标处的窗口 | CaptureOverlay |
+| `capture_cancel` | 取消截图流程 | CaptureOverlay |
+| `capture_confirm_selection` | 确认选区并唤起侧边窗 | CaptureOverlay |
+
+### 2.2 React 前端
+
+| 模块 | 路径 | 职责 |
+|------|------|------|
+| 应用入口 | `src/main.tsx` → `src/App.tsx` | 根据 window label 渲染不同视图 |
+| 侧边主界面 | `src/components/SidebarApp.tsx` | 聊天交互、状态展示、事件监听 |
+| 截图覆盖层 | `src/components/CaptureOverlay.tsx` | 区域选择、鼠标交互、后端截图调用 |
+| 截图确认 | `src/components/CaptureConfirm.tsx` | 预览 + 问题输入 + 提交 |
+| LLM 适配层 | `src/services/llm/` | 统一 provider 抽象、HTTP 调用、流式响应 |
+| 存储服务 | `src/services/storage/` | 封装 Tauri 存储命令 |
+| 类型定义 | `src/types/`、各 service/types.ts | 跨层共享的实体类型 |
+
+**前端路由方式**：无路由库。`App.tsx` 根据当前窗口的 `label` 决定渲染 `CaptureOverlay` 还是 `SidebarApp`。
+
+### 2.3 LLM 适配层
+
+```
+src/services/llm/
+  types.ts             # 统一类型（ChatMessage, ChatRequest, ChatResponse, RouteMetadata 等）
+  adapter.ts           # ProviderAdapter 接口 + LLMProviderError
+  openai-compatible.ts # OpenAI-compatible 基础适配器（HTTP + SSE streaming）
+  openai.ts            # OpenAI 具体适配器（默认 model: gpt-4o）
+  qwen.ts              # Qwen/DashScope 具体适配器（默认 model: qwen-plus）
+  client.ts            # UnifiedLLMClient — provider 注册表 + 路由
+  index.ts             # 统一导出
+```
+
+**关键设计**：
+
+- 所有 provider 共享 `ProviderAdapter` 接口（`chat` / `chatStream`）。
+- OpenAI 和 Qwen 都继承 `OpenAICompatibleAdapter`，只配置 baseURL / apiKey / model。
+- 新增 provider 只需实现 `ProviderAdapter` 或继承基础适配器。
+- `UnifiedLLMClient` 维护 provider 注册表，根据默认 provider 或显式指定路由到具体适配器。
+- LLM 调用在前端 WebView 中直接发起 HTTP，不经 Rust 后端。
+
+### 2.4 存储层
+
+```
+app_data_dir/
+  conversations/
+    conversations-index.json      # 全局会话索引
+    {conversation-id}/
+      meta.json                   # ConversationMeta
+      messages.json               # Turn[]
+      attachments/                # 附件目录（预留）
+```
+
+**数据格式**：全部为 JSON，使用 `serde_json`（Rust 侧）和 JSON.parse/stringify（前端侧）。
+
+**一致性保证**：每次写操作（创建/更新/删除会话、追加 Turn）都会同步更新索引文件。无事务机制——如果进程在写操作中途崩溃，可能出现文件不一致。
+
+## 3. 核心数据实体
+
+### 3.1 实体关系
+
+```
+ConversationIndex
+  └─ ConversationMeta[]  (1:N)
+       └─ Turn[]          (1:N, 按时间追加)
+            └─ Attachment  (1:N, 预留)
+
+CaptureRequest           (瞬时，不持久化)
+  ├─ imageData           (base64 PNG)
+  ├─ textQuestion?       (可选文本)
+  └─ timestamp
+
+ChatMessage              (LLM 交互单元)
+  ├─ role                (system | user | assistant)
+  └─ content             (string | TextContent[] + ImageContent[])
+
+RouteMetadata            (每轮回答的路由记录)
+  ├─ route_type          (direct | search | extraction)
+  ├─ provider
+  ├─ model
+  ├─ latency_ms
+  └─ skill_invoked
+```
+
+### 3.2 ConversationMeta
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string (UUID) | 唯一标识 |
+| title | string | 会话标题 |
+| created_at | string (RFC3339) | 创建时间 |
+| updated_at | string (RFC3339) | 最后更新时间 |
+| status | "active" \| "archived" | 会话状态 |
+
+### 3.3 Turn
+
+| 字段 | 类型 | 说明 |
+|------|------|------|
+| id | string (UUID) | 唯一标识 |
+| conversation_id | string | 所属会话 |
+| role | "system" \| "user" \| "assistant" | 角色 |
+| content | string | 消息内容 |
+| route_type | RouteType \| null | 路由策略 |
+| created_at | string (RFC3339) | 创建时间 |
+
+### 3.4 ChatMessage（LLM 层）
+
+与 Turn 不同，ChatMessage 直接面向 LLM API：
+
+- `content` 支持 `string` 或 `TextContent[] | ImageContent[]` 数组（用于多模态输入）。
+- Turn 存储时 `content` 为纯文本；发送给 LLM 时，截图通过 `ImageContent` 附加。
+
+## 4. 关键生命周期
+
+### 4.1 截图 → 回答 流程
+
+```
+1. 用户按 Ctrl+Shift+S
+2. Rust: global_shortcut 触发 capture::trigger_capture
+3. Rust: create_overlay_window → 显示全屏透明覆盖层
+4. 前端: CaptureOverlay 渲染，用户拖拽选择区域或点击窗口
+5. 前端: 调用 capture_crop_region / capture_window_at_point
+6. 前端: 显示 CaptureConfirm（预览 + 问题输入）
+7. 前端: 用户确认 → 发出 CaptureRequest
+8. Rust: capture_confirm_selection → 显示侧边窗
+9. 前端: SidebarApp 收到 capture-selected 事件
+10. 前端: 构建 ChatMessage[] → UnifiedLLMClient.chat/chatStream
+11. 前端: 将用户提问和模型回答存为 Turn（storage_append_turn）
+```
+
+### 4.2 会话生命周期
+
+```
+创建: storage_create_conversation → 创建目录 + meta.json + messages.json
+使用: storage_append_turn → 追加 Turn 到 messages.json + 更新索引
+归档: 更新 ConversationMeta.status = "archived"
+删除: storage_delete_conversation → 删除整个会话目录 + 更新索引
+续聊: storage_load_turns → 恢复历史 Turn → 继续追加
+```
+
+## 5. 外部依赖
+
+### 5.1 LLM Provider
+
+| Provider | 接入方式 | 配置 |
+|----------|---------|------|
+| OpenAI | HTTPS，OpenAI-compatible API | `VITE_OPENAI_API_KEY` / `BASE_URL` / `MODEL` |
+| Qwen (DashScope) | HTTPS，OpenAI-compatible API | `VITE_QWEN_API_KEY` / `BASE_URL` / `MODEL` |
+
+路由由 `VITE_LLM_DEFAULT_PROVIDER` 控制，默认 `openai`。
+
+### 5.2 操作系统依赖
+
+| 能力 | 实现方式 |
+|------|---------|
+| 全局快捷键 | `tauri_plugin_global_shortcut` |
+| 屏幕截图 | Win32 API（仅 Windows，`#[cfg(target_os = "windows")]`） |
+| 系统托盘 | Tauri tray API |
+| 窗口管理 | Tauri window API + 自定义定位逻辑 |
+
+### 5.3 环境变量
+
+全部通过 Vite 前端注入（`VITE_` 前缀）：
+
+| 变量 | 用途 |
+|------|------|
+| `VITE_LLM_DEFAULT_PROVIDER` | 默认 provider（openai / qwen） |
+| `VITE_OPENAI_API_KEY` | OpenAI API Key |
+| `VITE_OPENAI_BASE_URL` | OpenAI 端点（默认 api.openai.com/v1） |
+| `VITE_OPENAI_MODEL` | OpenAI 模型（默认 gpt-4o） |
+| `VITE_QWEN_API_KEY` | DashScope API Key |
+| `VITE_QWEN_BASE_URL` | DashScope 端点 |
+| `VITE_QWEN_MODEL` | Qwen 模型（默认 qwen-plus） |
+| `VITE_HOTKEY_SCREENSHOT` | 截图快捷键（默认 Ctrl+Shift+S） |
+
+## 6. 失败边界
+
+| 边界 | 失败场景 | 当前处理 | 对应需求 |
+|------|---------|---------|---------|
+| LLM 调用 | 网络超时 / API 错误 / Key 无效 | `LLMProviderError` 包装，返回 code + retryable 标记 | FR-060 |
+| 存储写入 | 磁盘满 / 权限不足 | `expect()` panic（未做优雅降级） | 待改进 |
+| 截图 | 无屏幕权限 / 多显示器异常 | 覆盖层创建失败时 eprintln 警告 | FR-017 |
+| 系统托盘 | 无托盘支持（远程桌面等） | eprintln 警告，继续运行 | — |
+| 进程崩溃 | 写操作中途退出 | 无事务机制，可能出现部分写入 | 待改进 |
+
+**已知技术债**：
+
+1. 存储层使用 `expect()` 处理 IO 错误，生产环境应改为向前端返回 Result。
+2. 无原子写入（write-to-temp + rename），崩溃可能导致 JSON 损坏。
+3. 截图功能仅在 Windows 编译（`#[cfg(target_os = "windows")]`），非 Windows 构建缺少捕获能力。
+
+## 7. 状态管理
+
+当前无全局状态库（Redux / Zustand / Context）。各组件使用：
+
+- **React `useState` / `useEffect`**：组件内局部状态。
+- **Tauri event bus**（`listen` / `emit`）：Rust → 前端的跨窗口通知（如 `capture-selected`）。
+- **Tauri `invoke`**：前端 → Rust 的命令调用。
+
+随着 step-03（本地会话）和 step-04（模型回答）的实现，预计需要引入轻量状态管理来维护当前会话上下文和 LLM 交互状态。

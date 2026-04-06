@@ -36,7 +36,7 @@
 ## 4. 参考文档
 
 - [docs/prd-v0.md](/mnt/e/my_github/Desktop-Teacher/docs/prd-v0.md)
-- [docs/exec-plans/README.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/README.md)
+- [docs/exec-plans/index.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/index.md)
 
 ## 5. 系统概览
 

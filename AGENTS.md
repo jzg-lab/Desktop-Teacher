@@ -21,7 +21,8 @@ This file is a navigation map for future agents. Keep it short. Durable truth be
 - Project overview: [README.md](/mnt/e/my_github/Desktop-Teacher/README.md)
 - Product requirements: [docs/prd-v0.md](/mnt/e/my_github/Desktop-Teacher/docs/prd-v0.md)
 - System requirements: [docs/srs-v0.md](/mnt/e/my_github/Desktop-Teacher/docs/srs-v0.md)
-- Execution plan index: [docs/exec-plans/README.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/README.md)
+- Architecture: [docs/architecture.md](/mnt/e/my_github/Desktop-Teacher/docs/architecture.md)
+- Execution plan index: [docs/exec-plans/index.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/index.md)
 
 ## Working Rules
 
