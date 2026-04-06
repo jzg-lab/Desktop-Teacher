@@ -3,6 +3,7 @@ mod tray;
 use std::fs;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
+use tauri::Manager;
 
 // ---- Data types matching TS types ----
 
@@ -30,7 +31,7 @@ impl Default for ConversationIndex {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Turn {
     pub id: String,
     pub conversation_id: String,
@@ -232,7 +233,9 @@ pub fn run() {
                         .build(),
                 )?;
             }
-            tray::create_tray(app.handle())?;
+            if let Err(e) = tray::create_tray(app.handle()) {
+                eprintln!("Warning: tray icon unavailable ({}) — running without system tray", e);
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

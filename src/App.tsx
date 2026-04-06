@@ -4,17 +4,7 @@ import SidebarApp from './components/SidebarApp';
 import './App.css';
 
 function App() {
-  const [windowLabel, setWindowLabel] = useState<string>('');
-
-  useEffect(() => {
-    setWindowLabel(getCurrentWebviewWindow().label);
-  }, []);
-
-  if (windowLabel === 'sidebar') {
-    return <SidebarApp />;
-  }
-
-  return null;
+  return <SidebarApp />;
 }
 
 export default App;
