@@ -62,28 +62,6 @@ function HistoryList({ onBack }: HistoryListProps) {
     setConversations((prev) => prev.filter((c) => c.id !== id));
   }
 
-  if (loading) {
-    return (
-      <div className="history-panel">
-        <div className="history-header">
-          <button className="header-btn" onClick={onBack} aria-label="返回">
-            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-              <path
-                d="M9 1L3 7L9 13"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </button>
-          <h2 className="history-title">历史会话</h2>
-        </div>
-        <div className="history-loading">加载中…</div>
-      </div>
-    );
-  }
-
   return (
     <div className="history-panel">
       <div className="history-header">
@@ -101,7 +79,9 @@ function HistoryList({ onBack }: HistoryListProps) {
         <h2 className="history-title">历史会话</h2>
       </div>
 
-      {conversations.length === 0 ? (
+      {loading ? (
+        <div className="history-loading">加载中…</div>
+      ) : conversations.length === 0 ? (
         <div className="history-empty">
           <p className="history-empty-text">暂无历史会话</p>
           <p className="history-empty-subtext">开始一次截图提问后将自动保存</p>

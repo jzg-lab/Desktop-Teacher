@@ -18,7 +18,6 @@ import {
   loadTurns,
   appendTurn as storageAppendTurn,
   deleteConversation as storageDeleteConversation,
-  updateConversationTitle,
 } from "../services/storage";
 import type {
   ConversationMeta,
@@ -45,7 +44,6 @@ interface ConversationActions {
     routeType?: RouteType | null,
     conversationId?: string,
   ) => Promise<Turn>;
-  setTitle: (title: string) => Promise<void>;
   closeConversation: () => void;
   removeConversation: (id: string) => Promise<void>;
   showHistory: () => void;
@@ -163,20 +161,6 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     [state.activeConversation],
   );
 
-  const setTitle = useCallback(
-    async (title: string): Promise<void> => {
-      if (!state.activeConversation) return;
-      await updateConversationTitle(state.activeConversation.id, title);
-      setState((prev) => ({
-        ...prev,
-        activeConversation: prev.activeConversation
-          ? { ...prev.activeConversation, title, updated_at: new Date().toISOString() }
-          : null,
-      }));
-    },
-    [state.activeConversation],
-  );
-
   const closeConversation = useCallback(() => {
     setState({
       activeConversation: null,
@@ -217,7 +201,6 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     startNewConversation,
     openConversation,
     appendTurn,
-    setTitle,
     closeConversation,
     removeConversation,
     showHistory,

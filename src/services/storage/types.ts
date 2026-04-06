@@ -26,22 +26,6 @@ export interface Turn {
   created_at: string;
 }
 
-export interface Attachment {
-  id: string;
-  turn_id: string;
-  type: "image" | "file";
-  local_uri: string;
-  metadata: Record<string, string>;
-}
-
-export interface SourceRef {
-  id: string;
-  turn_id: string;
-  title: string;
-  url: string;
-  snippet: string;
-}
-
 export interface ConversationIndex {
   conversations: ConversationMeta[];
   last_updated: string;
