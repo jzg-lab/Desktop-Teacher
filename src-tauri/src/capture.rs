@@ -22,6 +22,13 @@ fn img_to_base64_png(img: &DynamicImage) -> String {
     base64::engine::general_purpose::STANDARD.encode(buf.into_inner())
 }
 
+fn img_to_base64_jpeg(img: &DynamicImage) -> String {
+    let mut buf = std::io::Cursor::new(Vec::new());
+    img.write_to(&mut buf, image::ImageFormat::Jpeg)
+        .expect("Failed to encode JPEG");
+    base64::engine::general_purpose::STANDARD.encode(buf.into_inner())
+}
+
 fn logical_monitor_rect<R: Runtime>(app: &AppHandle<R>) -> Option<(f64, f64, f64, f64)> {
     let main_win = app.get_webview_window("main")?;
     let monitor = main_win.primary_monitor().ok()??;
@@ -33,27 +40,23 @@ fn logical_monitor_rect<R: Runtime>(app: &AppHandle<R>) -> Option<(f64, f64, f64
     Some((x, y, w, h))
 }
 
-// ---- Pre-created overlay window ----
+// ---- Pre-created windows ----
 
 pub fn create_overlay_window<R: Runtime>(app: &AppHandle<R>) {
     let Some((x, y, w, h)) = logical_monitor_rect(app) else {
         eprintln!("Warning: could not get monitor info for overlay creation");
         return;
     };
-    let _ = WebviewWindowBuilder::new(
-        app,
-        "capture-overlay",
-        WebviewUrl::App("/".into()),
-    )
-    .title("Capture")
-    .inner_size(w, h)
-    .decorations(false)
-    .always_on_top(true)
-    .skip_taskbar(true)
-    .resizable(false)
-    .visible(false)
-    .position(x, y)
-    .build();
+    let _ = WebviewWindowBuilder::new(app, "capture-overlay", WebviewUrl::App("/".into()))
+        .title("Capture")
+        .inner_size(w, h)
+        .decorations(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .resizable(false)
+        .visible(false)
+        .position(x, y)
+        .build();
 }
 
 // ---- Commands ----
@@ -151,7 +154,6 @@ pub fn capture_cancel(app: AppHandle, state: tauri::State<'_, CaptureState>) -> 
 
 fn hide_overlay<R: Runtime>(app: &AppHandle<R>) {
     if let Some(win) = app.get_webview_window("capture-overlay") {
-        let _ = app.emit("capture-reset", ());
         let _ = win.hide();
     }
 }
@@ -160,48 +162,16 @@ fn show_sidebar<R: Runtime>(app: &AppHandle<R>) {
     if let Some(win) = app.get_webview_window("sidebar") {
         let _ = win.show();
         let _ = win.set_focus();
-    } else {
-        create_sidebar_window(app);
     }
-}
-
-fn create_sidebar_window<R: Runtime>(app: &AppHandle<R>) {
-    let Some((screen_x, screen_y, screen_w, screen_h)) = logical_monitor_rect(app) else {
-        return;
-    };
-    let sidebar_width = 380.0;
-    let sidebar_height = (screen_h * 0.75).min(720.0);
-    let margin = 16.0;
-    let x = screen_x + screen_w - sidebar_width - margin;
-    let y = screen_y + (screen_h - sidebar_height) / 2.0;
-
-    let _ = WebviewWindowBuilder::new(
-        app,
-        "sidebar",
-        WebviewUrl::App("/".into()),
-    )
-    .title("Desktop Teacher")
-    .inner_size(sidebar_width, sidebar_height)
-    .decorations(false)
-    .always_on_top(true)
-    .skip_taskbar(true)
-    .resizable(true)
-    .position(x, y)
-    .build();
 }
 
 pub fn trigger_capture<R: Runtime>(app: &AppHandle<R>) {
     if let Some(win) = app.get_webview_window("sidebar") {
         let _ = win.hide();
     }
-    if let Some(win) = app.get_webview_window("capture-overlay") {
-        let _ = win.hide();
-    }
 
     let app_handle = app.clone();
     std::thread::spawn(move || {
-        std::thread::sleep(std::time::Duration::from_millis(50));
-
         let monitors = match xcap::Monitor::all() {
             Ok(m) => m,
             Err(e) => {
@@ -210,7 +180,10 @@ pub fn trigger_capture<R: Runtime>(app: &AppHandle<R>) {
             }
         };
 
-        let primary = match monitors.into_iter().find(|m| m.is_primary().unwrap_or(false)) {
+        let primary = match monitors
+            .into_iter()
+            .find(|m| m.is_primary().unwrap_or(false))
+        {
             Some(m) => m,
             None => {
                 eprintln!("No primary monitor found");
@@ -226,8 +199,9 @@ pub fn trigger_capture<R: Runtime>(app: &AppHandle<R>) {
             }
         };
 
-        let state: tauri::State<CaptureState> = app_handle.state();
-        {
+        let dynamic = DynamicImage::ImageRgba8(img);
+        let preview = {
+            let state = app_handle.state::<CaptureState>();
             let mut guard = match state.image.lock() {
                 Ok(g) => g,
                 Err(e) => {
@@ -235,15 +209,12 @@ pub fn trigger_capture<R: Runtime>(app: &AppHandle<R>) {
                     return;
                 }
             };
-            *guard = Some(DynamicImage::ImageRgba8(img));
-        }
+            let jpeg = img_to_base64_jpeg(&dynamic);
+            *guard = Some(dynamic);
+            jpeg
+        };
 
-        if let Some(overlay) = app_handle.get_webview_window("capture-overlay") {
-            let _ = overlay.show();
-            let _ = overlay.set_focus();
-        }
-
-        let _ = app_handle.emit("capture-ready", ());
+        let _ = app_handle.emit_to("capture-overlay", "capture-ready", preview);
     });
 }
 
@@ -251,6 +222,6 @@ pub fn trigger_capture<R: Runtime>(app: &AppHandle<R>) {
 pub fn capture_confirm_selection(app: AppHandle, image_data: String) -> Result<(), String> {
     hide_overlay(&app);
     show_sidebar(&app);
-    app.emit("capture-selected", image_data)
+    app.emit_to("sidebar", "capture-selected", image_data)
         .map_err(|e| e.to_string())
 }

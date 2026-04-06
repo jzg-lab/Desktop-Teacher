@@ -4,12 +4,10 @@
  * Left-click tray icon → toggle sidebar window
  * Right-click tray icon → context menu (Show / Hide / Quit)
  */
-
 use tauri::{
-    AppHandle, Manager, Runtime,
     menu::{MenuBuilder, MenuItem},
     tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
-    WebviewUrl, WebviewWindowBuilder,
+    AppHandle, Manager, Runtime, WebviewUrl, WebviewWindowBuilder,
 };
 
 // ---------- Public ----------
@@ -83,9 +81,13 @@ fn toggle_sidebar<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-fn create_sidebar_window<R: Runtime>(app: &AppHandle<R>) {
-    let Some(main_win) = app.get_webview_window("main") else { return };
-    let Ok(Some(monitor)) = main_win.primary_monitor() else { return };
+pub fn create_sidebar_window<R: Runtime>(app: &AppHandle<R>) {
+    let Some(main_win) = app.get_webview_window("main") else {
+        return;
+    };
+    let Ok(Some(monitor)) = main_win.primary_monitor() else {
+        return;
+    };
 
     let scale = monitor.scale_factor();
     let screen_w = monitor.size().width as f64 / scale;
@@ -99,17 +101,14 @@ fn create_sidebar_window<R: Runtime>(app: &AppHandle<R>) {
     let x = screen_x + screen_w - sidebar_width - margin;
     let y = screen_y + (screen_h - sidebar_height) / 2.0;
 
-    let _ = WebviewWindowBuilder::new(
-        app,
-        "sidebar",
-        WebviewUrl::App("/".into()),
-    )
-    .title("Desktop Teacher")
-    .inner_size(sidebar_width, sidebar_height)
-    .decorations(false)
-    .always_on_top(true)
-    .skip_taskbar(true)
-    .resizable(true)
-    .position(x, y)
-    .build();
+    let _ = WebviewWindowBuilder::new(app, "sidebar", WebviewUrl::App("/".into()))
+        .title("Desktop Teacher")
+        .inner_size(sidebar_width, sidebar_height)
+        .decorations(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .resizable(true)
+        .visible(false)
+        .position(x, y)
+        .build();
 }
