@@ -247,6 +247,15 @@ fn build_app() -> tauri::Builder<tauri::Wry> {
                 .build(),
         )
         .setup(move |app| {
+            if cfg!(debug_assertions) {
+                app.handle().plugin(
+                    tauri_plugin_log::Builder::default()
+                        .level(log::LevelFilter::Info)
+                        .build(),
+                )?;
+            }
+
+            app.global_shortcut().register(shortcut)?;
 
             if let Err(e) = tray::create_tray(app.handle()) {
                 eprintln!("Warning: tray icon unavailable ({}) — running without system tray", e);
