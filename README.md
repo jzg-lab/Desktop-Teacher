@@ -57,7 +57,8 @@ docs/              # 产品文档
 | step-00 技术底座与仓库骨架 | Done |
 | step-01 桌面壳与角色图标 | Done |
 | step-02 截图与提交 | Done |
-| step-03 本地会话与归档 | Next |
+| step-03 本地会话与归档 | Done |
+| step-04 模型适配与回答 | Next |
 
 ## 开发
 

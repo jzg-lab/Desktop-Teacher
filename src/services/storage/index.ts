@@ -2,6 +2,10 @@ export type {
   ConversationMeta,
   Turn,
   ConversationIndex,
+  RouteType,
+  Role,
+  Attachment,
+  SourceRef,
 } from "./types";
 
 export {
