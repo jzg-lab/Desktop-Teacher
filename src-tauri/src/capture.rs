@@ -159,94 +159,109 @@ fn ensure_sidebar<R: Runtime>(app: &AppHandle<R>) {
     }
 }
 
-/// Trigger the full capture flow: screenshot primary monitor → open overlay.
+/// Trigger the full capture flow:
+/// 1. Hide sidebar (so it doesn't appear in screenshot)
+/// 2. Short delay to let the window actually disappear
+/// 3. Capture primary monitor
+/// 4. Open fullscreen overlay with the screenshot
 pub fn trigger_capture<R: Runtime>(app: &AppHandle<R>) {
-    let monitors = match xcap::Monitor::all() {
-        Ok(m) => m,
-        Err(e) => {
-            eprintln!("Failed to enumerate monitors: {e}");
-            return;
-        }
-    };
-
-    let primary = match monitors.into_iter().find(|m| m.is_primary().unwrap_or(false)) {
-        Some(m) => m,
-        None => {
-            eprintln!("No primary monitor found");
-            return;
-        }
-    };
-
-    let img = match primary.capture_image() {
-        Ok(i) => i,
-        Err(e) => {
-            eprintln!("Failed to capture screen: {e}");
-            return;
-        }
-    };
-
-    let state: tauri::State<CaptureState> = app.state();
-    {
-        let mut guard = match state.image.lock() {
-            Ok(g) => g,
-            Err(e) => {
-                eprintln!("Failed to lock capture state: {e}");
-                return;
-            }
-        };
-        *guard = Some(DynamicImage::ImageRgba8(img));
+    // Hide our own windows so they don't appear in the screenshot
+    if let Some(win) = app.get_webview_window("sidebar") {
+        let _ = win.hide();
     }
-
-    let mw = match primary.width() {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("Failed to get monitor width: {e}");
-            return;
-        }
-    };
-    let mh = match primary.height() {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("Failed to get monitor height: {e}");
-            return;
-        }
-    };
-    let mx = match primary.x() {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("Failed to get monitor x: {e}");
-            return;
-        }
-    };
-    let my = match primary.y() {
-        Ok(v) => v,
-        Err(e) => {
-            eprintln!("Failed to get monitor y: {e}");
-            return;
-        }
-    };
-
     if let Some(win) = app.get_webview_window("capture-overlay") {
         let _ = win.destroy();
     }
 
-    let overlay_result = WebviewWindowBuilder::new(
-        app,
-        "capture-overlay",
-        WebviewUrl::App("/".into()),
-    )
-    .title("Capture")
-    .inner_size(mw as f64, mh as f64)
-    .decorations(false)
-    .always_on_top(true)
-    .skip_taskbar(true)
-    .resizable(false)
-    .position(mx as f64, my as f64)
-    .build();
+    let app_handle = app.clone();
+    std::thread::spawn(move || {
+        // Give the OS time to actually hide/destroy windows before capturing
+        std::thread::sleep(std::time::Duration::from_millis(150));
 
-    if let Err(e) = overlay_result {
-        eprintln!("Failed to create overlay window: {e}");
-    }
+        let monitors = match xcap::Monitor::all() {
+            Ok(m) => m,
+            Err(e) => {
+                eprintln!("Failed to enumerate monitors: {e}");
+                return;
+            }
+        };
+
+        let primary = match monitors.into_iter().find(|m| m.is_primary().unwrap_or(false)) {
+            Some(m) => m,
+            None => {
+                eprintln!("No primary monitor found");
+                return;
+            }
+        };
+
+        let img = match primary.capture_image() {
+            Ok(i) => i,
+            Err(e) => {
+                eprintln!("Failed to capture screen: {e}");
+                return;
+            }
+        };
+
+        let state: tauri::State<CaptureState> = app_handle.state();
+        {
+            let mut guard = match state.image.lock() {
+                Ok(g) => g,
+                Err(e) => {
+                    eprintln!("Failed to lock capture state: {e}");
+                    return;
+                }
+            };
+            *guard = Some(DynamicImage::ImageRgba8(img));
+        }
+
+        let mw = match primary.width() {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("Failed to get monitor width: {e}");
+                return;
+            }
+        };
+        let mh = match primary.height() {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("Failed to get monitor height: {e}");
+                return;
+            }
+        };
+        let mx = match primary.x() {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("Failed to get monitor x: {e}");
+                return;
+            }
+        };
+        let my = match primary.y() {
+            Ok(v) => v,
+            Err(e) => {
+                eprintln!("Failed to get monitor y: {e}");
+                return;
+            }
+        };
+
+        let overlay_result = WebviewWindowBuilder::new(
+            &app_handle,
+            "capture-overlay",
+            WebviewUrl::App("/".into()),
+        )
+        .title("Capture")
+        .inner_size(mw as f64, mh as f64)
+        .decorations(false)
+        .always_on_top(true)
+        .skip_taskbar(true)
+        .resizable(false)
+        .transparent(true)
+        .position(mx as f64, my as f64)
+        .build();
+
+        if let Err(e) = overlay_result {
+            eprintln!("Failed to create overlay window: {e}");
+        }
+    });
 }
 
 /// Receive confirmed selection from overlay: emit event, show sidebar, close overlay.
