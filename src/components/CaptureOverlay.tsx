@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { invoke } from '@tauri-apps/api/core';
+import { listen } from '@tauri-apps/api/event';
 
 interface Selection {
   startX: number;
@@ -17,9 +18,28 @@ function CaptureOverlay() {
   const overlayRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    invoke<string>('capture_get_screenshot')
-      .then((b64) => setBgImage(b64))
-      .catch((e) => console.error('Failed to load screenshot:', e));
+    const unlistenReady = listen<void>('capture-ready', () => {
+      setBgImage(null);
+      setSelection(null);
+      setConfirmed(null);
+      setDragging(false);
+
+      invoke<string>('capture_get_screenshot')
+        .then((b64) => setBgImage(b64))
+        .catch((e) => console.error('Failed to load screenshot:', e));
+    });
+
+    const unlistenReset = listen<void>('capture-reset', () => {
+      setBgImage(null);
+      setSelection(null);
+      setConfirmed(null);
+      setDragging(false);
+    });
+
+    return () => {
+      unlistenReady.then((fn) => fn());
+      unlistenReset.then((fn) => fn());
+    };
   }, []);
 
   const toPhysical = useCallback((cssX: number, cssY: number) => {

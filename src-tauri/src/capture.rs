@@ -22,9 +22,42 @@ fn img_to_base64_png(img: &DynamicImage) -> String {
     base64::engine::general_purpose::STANDARD.encode(buf.into_inner())
 }
 
+fn logical_monitor_rect<R: Runtime>(app: &AppHandle<R>) -> Option<(f64, f64, f64, f64)> {
+    let main_win = app.get_webview_window("main")?;
+    let monitor = main_win.primary_monitor().ok()??;
+    let scale = monitor.scale_factor();
+    let w = monitor.size().width as f64 / scale;
+    let h = monitor.size().height as f64 / scale;
+    let x = monitor.position().x as f64 / scale;
+    let y = monitor.position().y as f64 / scale;
+    Some((x, y, w, h))
+}
+
+// ---- Pre-created overlay window ----
+
+pub fn create_overlay_window<R: Runtime>(app: &AppHandle<R>) {
+    let Some((x, y, w, h)) = logical_monitor_rect(app) else {
+        eprintln!("Warning: could not get monitor info for overlay creation");
+        return;
+    };
+    let _ = WebviewWindowBuilder::new(
+        app,
+        "capture-overlay",
+        WebviewUrl::App("/".into()),
+    )
+    .title("Capture")
+    .inner_size(w, h)
+    .decorations(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .resizable(false)
+    .visible(false)
+    .position(x, y)
+    .build();
+}
+
 // ---- Commands ----
 
-/// Return the stored full screenshot as base64 PNG.
 #[tauri::command]
 pub fn capture_get_screenshot(state: tauri::State<'_, CaptureState>) -> Result<String, String> {
     let guard = state.image.lock().map_err(|e| e.to_string())?;
@@ -34,8 +67,6 @@ pub fn capture_get_screenshot(state: tauri::State<'_, CaptureState>) -> Result<S
     }
 }
 
-/// Crop a region from the stored screenshot, return as base64 PNG.
-/// Consumes the stored image.
 #[tauri::command]
 pub fn capture_crop_region(
     state: tauri::State<'_, CaptureState>,
@@ -59,8 +90,6 @@ pub fn capture_crop_region(
     Ok(img_to_base64_png(&result))
 }
 
-/// Capture the window at the given screen coordinates, return as base64 PNG.
-/// xcap returns windows in z-order (topmost first); we skip our own windows.
 #[tauri::command]
 pub fn capture_window_at_point(
     state: tauri::State<'_, CaptureState>,
@@ -108,75 +137,70 @@ pub fn capture_window_at_point(
     Err("No suitable window found at that position".into())
 }
 
-/// Cancel capture: clear state and destroy overlay window.
 #[tauri::command]
 pub fn capture_cancel(app: AppHandle, state: tauri::State<'_, CaptureState>) -> Result<(), String> {
     {
         let mut guard = state.image.lock().map_err(|e| e.to_string())?;
         *guard = None;
     }
-    destroy_overlay(&app);
+    hide_overlay(&app);
     Ok(())
 }
 
 // ---- Window lifecycle ----
 
-fn destroy_overlay<R: Runtime>(app: &AppHandle<R>) {
+fn hide_overlay<R: Runtime>(app: &AppHandle<R>) {
     if let Some(win) = app.get_webview_window("capture-overlay") {
-        let _ = win.destroy();
+        let _ = app.emit("capture-reset", ());
+        let _ = win.hide();
     }
 }
 
-fn ensure_sidebar<R: Runtime>(app: &AppHandle<R>) {
-    if app.get_webview_window("sidebar").is_none() {
-        if let Some(main_win) = app.get_webview_window("main") {
-            if let Ok(Some(monitor)) = main_win.primary_monitor() {
-                let screen_size = monitor.size();
-                let screen_pos = monitor.position();
-                let sidebar_width: u32 = 380;
-                let sidebar_height = (screen_size.height as f64 * 0.85) as u32;
-                let x = screen_pos.x + screen_size.width as i32 - sidebar_width as i32 - 20;
-                let y = screen_pos.y + 40;
-
-                let _ = WebviewWindowBuilder::new(
-                    app,
-                    "sidebar",
-                    WebviewUrl::App("/".into()),
-                )
-                .title("Desktop Teacher")
-                .inner_size(sidebar_width as f64, sidebar_height as f64)
-                .decorations(false)
-                .always_on_top(true)
-                .skip_taskbar(true)
-                .resizable(true)
-                .position(x as f64, y as f64)
-                .build();
-            }
-        }
-    } else if let Some(win) = app.get_webview_window("sidebar") {
+fn show_sidebar<R: Runtime>(app: &AppHandle<R>) {
+    if let Some(win) = app.get_webview_window("sidebar") {
         let _ = win.show();
         let _ = win.set_focus();
+    } else {
+        create_sidebar_window(app);
     }
 }
 
-/// Trigger the full capture flow:
-/// 1. Hide sidebar (so it doesn't appear in screenshot)
-/// 2. Short delay to let the window actually disappear
-/// 3. Capture primary monitor
-/// 4. Open fullscreen overlay with the screenshot
+fn create_sidebar_window<R: Runtime>(app: &AppHandle<R>) {
+    let Some((screen_x, screen_y, screen_w, screen_h)) = logical_monitor_rect(app) else {
+        return;
+    };
+    let sidebar_width = 380.0;
+    let sidebar_height = (screen_h * 0.75).min(720.0);
+    let margin = 16.0;
+    let x = screen_x + screen_w - sidebar_width - margin;
+    let y = screen_y + (screen_h - sidebar_height) / 2.0;
+
+    let _ = WebviewWindowBuilder::new(
+        app,
+        "sidebar",
+        WebviewUrl::App("/".into()),
+    )
+    .title("Desktop Teacher")
+    .inner_size(sidebar_width, sidebar_height)
+    .decorations(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .resizable(true)
+    .position(x, y)
+    .build();
+}
+
 pub fn trigger_capture<R: Runtime>(app: &AppHandle<R>) {
-    // Hide our own windows so they don't appear in the screenshot
     if let Some(win) = app.get_webview_window("sidebar") {
         let _ = win.hide();
     }
     if let Some(win) = app.get_webview_window("capture-overlay") {
-        let _ = win.destroy();
+        let _ = win.hide();
     }
 
     let app_handle = app.clone();
     std::thread::spawn(move || {
-        // Give the OS time to actually hide/destroy windows before capturing
-        std::thread::sleep(std::time::Duration::from_millis(150));
+        std::thread::sleep(std::time::Duration::from_millis(50));
 
         let monitors = match xcap::Monitor::all() {
             Ok(m) => m,
@@ -214,61 +238,19 @@ pub fn trigger_capture<R: Runtime>(app: &AppHandle<R>) {
             *guard = Some(DynamicImage::ImageRgba8(img));
         }
 
-        let mw = match primary.width() {
-            Ok(v) => v,
-            Err(e) => {
-                eprintln!("Failed to get monitor width: {e}");
-                return;
-            }
-        };
-        let mh = match primary.height() {
-            Ok(v) => v,
-            Err(e) => {
-                eprintln!("Failed to get monitor height: {e}");
-                return;
-            }
-        };
-        let mx = match primary.x() {
-            Ok(v) => v,
-            Err(e) => {
-                eprintln!("Failed to get monitor x: {e}");
-                return;
-            }
-        };
-        let my = match primary.y() {
-            Ok(v) => v,
-            Err(e) => {
-                eprintln!("Failed to get monitor y: {e}");
-                return;
-            }
-        };
-
-        let overlay_result = WebviewWindowBuilder::new(
-            &app_handle,
-            "capture-overlay",
-            WebviewUrl::App("/".into()),
-        )
-        .title("Capture")
-        .inner_size(mw as f64, mh as f64)
-        .decorations(false)
-        .always_on_top(true)
-        .skip_taskbar(true)
-        .resizable(false)
-        .transparent(true)
-        .position(mx as f64, my as f64)
-        .build();
-
-        if let Err(e) = overlay_result {
-            eprintln!("Failed to create overlay window: {e}");
+        if let Some(overlay) = app_handle.get_webview_window("capture-overlay") {
+            let _ = overlay.show();
+            let _ = overlay.set_focus();
         }
+
+        let _ = app_handle.emit("capture-ready", ());
     });
 }
 
-/// Receive confirmed selection from overlay: emit event, show sidebar, close overlay.
 #[tauri::command]
 pub fn capture_confirm_selection(app: AppHandle, image_data: String) -> Result<(), String> {
-    destroy_overlay(&app);
-    ensure_sidebar(&app);
+    hide_overlay(&app);
+    show_sidebar(&app);
     app.emit("capture-selected", image_data)
         .map_err(|e| e.to_string())
 }

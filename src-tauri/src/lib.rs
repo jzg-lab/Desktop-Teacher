@@ -257,6 +257,8 @@ fn build_app() -> tauri::Builder<tauri::Wry> {
 
             app.global_shortcut().register(shortcut)?;
 
+            capture::create_overlay_window(app.handle());
+
             if let Err(e) = tray::create_tray(app.handle()) {
                 eprintln!("Warning: tray icon unavailable ({}) — running without system tray", e);
             }

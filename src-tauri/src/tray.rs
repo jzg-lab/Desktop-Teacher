@@ -84,29 +84,32 @@ fn toggle_sidebar<R: Runtime>(app: &AppHandle<R>) {
 }
 
 fn create_sidebar_window<R: Runtime>(app: &AppHandle<R>) {
-    // Position the sidebar at the right edge of the primary monitor
-    if let Some(main_win) = app.get_webview_window("main") {
-        if let Ok(Some(monitor)) = main_win.primary_monitor() {
-            let screen_size = monitor.size();
-            let screen_pos = monitor.position();
-            let sidebar_width: u32 = 380;
-            let sidebar_height = (screen_size.height as f64 * 0.85) as u32;
-            let x = screen_pos.x + screen_size.width as i32 - sidebar_width as i32 - 20;
-            let y = screen_pos.y + 40;
+    let Some(main_win) = app.get_webview_window("main") else { return };
+    let Ok(Some(monitor)) = main_win.primary_monitor() else { return };
 
-            let _ = WebviewWindowBuilder::new(
-                app,
-                "sidebar",
-                WebviewUrl::App("/".into()),
-            )
-            .title("Desktop Teacher")
-            .inner_size(sidebar_width as f64, sidebar_height as f64)
-            .decorations(false)
-            .always_on_top(true)
-            .skip_taskbar(true)
-            .resizable(true)
-            .position(x as f64, y as f64)
-            .build();
-        }
-    }
+    let scale = monitor.scale_factor();
+    let screen_w = monitor.size().width as f64 / scale;
+    let screen_h = monitor.size().height as f64 / scale;
+    let screen_x = monitor.position().x as f64 / scale;
+    let screen_y = monitor.position().y as f64 / scale;
+
+    let sidebar_width = 380.0;
+    let sidebar_height = (screen_h * 0.75).min(720.0);
+    let margin = 16.0;
+    let x = screen_x + screen_w - sidebar_width - margin;
+    let y = screen_y + (screen_h - sidebar_height) / 2.0;
+
+    let _ = WebviewWindowBuilder::new(
+        app,
+        "sidebar",
+        WebviewUrl::App("/".into()),
+    )
+    .title("Desktop Teacher")
+    .inner_size(sidebar_width, sidebar_height)
+    .decorations(false)
+    .always_on_top(true)
+    .skip_taskbar(true)
+    .resizable(true)
+    .position(x, y)
+    .build();
 }
