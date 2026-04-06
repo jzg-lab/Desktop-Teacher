@@ -54,25 +54,26 @@ function SidebarAppInner() {
     async (request: CaptureRequest) => {
       setStatus("processing");
       try {
-        if (!activeConversation) {
-          await startNewConversation(
+        let convId = activeConversation?.id;
+
+        if (!convId) {
+          const meta = await startNewConversation(
             request.textQuestion
               ? request.textQuestion.slice(0, 30)
               : "截图提问",
           );
+          convId = meta.id;
         }
 
         const questionText =
           request.textQuestion ?? "请解释这张截图中的内容";
-        await appendTurn("user", questionText);
-
-        if (!activeConversation) {
-          await appendTurn(
-            "assistant",
-            "（模型回答将在 step-04 接入后实现）",
-            "direct",
-          );
-        }
+        await appendTurn("user", questionText, null, convId);
+        await appendTurn(
+          "assistant",
+          "（模型回答将在 step-04 接入后实现）",
+          "direct",
+          convId,
+        );
 
         setCaptureImage(null);
         setStatus("idle");

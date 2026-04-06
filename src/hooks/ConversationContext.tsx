@@ -43,6 +43,7 @@ interface ConversationActions {
     role: Role,
     content: string,
     routeType?: RouteType | null,
+    conversationId?: string,
   ) => Promise<Turn>;
   setTitle: (title: string) => Promise<void>;
   closeConversation: () => void;
@@ -139,11 +140,13 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
       role: Role,
       content: string,
       routeType?: RouteType | null,
+      conversationId?: string,
     ): Promise<Turn> => {
-      if (!state.activeConversation) {
+      const convId = conversationId ?? state.activeConversation?.id;
+      if (!convId) {
         throw new Error("No active conversation");
       }
-      const turn = await storageAppendTurn(state.activeConversation.id, {
+      const turn = await storageAppendTurn(convId, {
         role,
         content,
         route_type: routeType ?? null,
