@@ -45,7 +45,7 @@ pub fn capture_crop_region(
     h: u32,
 ) -> Result<String, String> {
     let mut guard = state.image.lock().map_err(|e| e.to_string())?;
-    let img = guard.take().ok_or("No screenshot available")?;
+    let mut img = guard.take().ok_or("No screenshot available")?;
 
     let iw = img.width();
     let ih = img.height();
@@ -54,7 +54,7 @@ pub fn capture_crop_region(
     let cw = w.min(iw - cx);
     let ch = h.min(ih - cy);
 
-    let cropped = image::imageops::crop(&img, cx, cy, cw, ch).to_image();
+    let cropped = image::imageops::crop(&mut img, cx, cy, cw, ch).to_image();
     let result = DynamicImage::ImageRgba8(cropped);
     Ok(img_to_base64_png(&result))
 }
@@ -81,19 +81,22 @@ pub fn capture_window_at_point(
             continue;
         }
 
-        let pos = match win.position() {
-            Ok(p) => p,
+        let wx = match win.x() {
+            Ok(v) => v,
             Err(_) => continue,
         };
-        let size = match win.size() {
-            Ok(s) => s,
+        let wy = match win.y() {
+            Ok(v) => v,
             Err(_) => continue,
         };
-
-        let wx: i32 = pos.x;
-        let wy: i32 = pos.y;
-        let ww: i32 = size.width as i32;
-        let wh: i32 = size.height as i32;
+        let ww = match win.width() {
+            Ok(v) => v as i32,
+            Err(_) => continue,
+        };
+        let wh = match win.height() {
+            Ok(v) => v as i32,
+            Err(_) => continue,
+        };
 
         if x >= wx && x < wx + ww && y >= wy && y < wy + wh {
             let img = win.capture_image().map_err(|e| e.to_string())?;
@@ -194,17 +197,31 @@ pub fn trigger_capture<R: Runtime>(app: &AppHandle<R>) {
         *guard = Some(DynamicImage::ImageRgba8(img));
     }
 
-    let monitor_size = match primary.size() {
-        Ok(s) => s,
+    let mw = match primary.width() {
+        Ok(v) => v,
         Err(e) => {
-            eprintln!("Failed to get monitor size: {e}");
+            eprintln!("Failed to get monitor width: {e}");
             return;
         }
     };
-    let monitor_pos = match primary.position() {
-        Ok(p) => p,
+    let mh = match primary.height() {
+        Ok(v) => v,
         Err(e) => {
-            eprintln!("Failed to get monitor position: {e}");
+            eprintln!("Failed to get monitor height: {e}");
+            return;
+        }
+    };
+    let mx = match primary.x() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("Failed to get monitor x: {e}");
+            return;
+        }
+    };
+    let my = match primary.y() {
+        Ok(v) => v,
+        Err(e) => {
+            eprintln!("Failed to get monitor y: {e}");
             return;
         }
     };
@@ -219,12 +236,12 @@ pub fn trigger_capture<R: Runtime>(app: &AppHandle<R>) {
         WebviewUrl::App("/".into()),
     )
     .title("Capture")
-    .inner_size(monitor_size.width as f64, monitor_size.height as f64)
+    .inner_size(mw as f64, mh as f64)
     .decorations(false)
     .always_on_top(true)
     .skip_taskbar(true)
     .resizable(false)
-    .position(monitor_pos.x as f64, monitor_pos.y as f64)
+    .position(mx as f64, my as f64)
     .build();
 
     if let Err(e) = overlay_result {
