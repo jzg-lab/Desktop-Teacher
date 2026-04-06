@@ -21,22 +21,18 @@
 
 ## 当前下一步1. ~~step-00-tech-foundation.md~~ ✓
 2. ~~step-01-desktop-shell-and-avatar.md~~ ✓
-3. [step-02-capture-and-submit.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-02-capture-and-submit.md)
+3. ~~step-02-capture-and-submit.md~~ ✓
 4. [step-03-local-conversations-and-archive.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-03-local-conversations-and-archive.md)
-5. [step-04-model-adapter-and-answering.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-04-model-adapter-and-answering.md)
-6. [step-05-follow-up-chat.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-05-follow-up-chat.md)
-7. [step-06-search-skills-and-routing.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-06-search-skills-and-routing.md)
-8. [step-07-errors-and-observability.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-07-errors-and-observability.md)
-9. [step-08-polish-and-release.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-08-polish-and-release.md)
 
 ## 当前下一步
 
 当前最该开始的是：
 
-- [step-02-capture-and-submit.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-02-capture-and-submit.md)
+- [step-03-local-conversations-and-archive.md](/mnt/e/my_github/Desktop-Teacher/docs/exec-plans/step-03-local-conversations-and-archive.md)
 
 原因：
 
 - Step-00 技术选型已完成。
 - Step-01 桌面壳、系统托盘图标和侧边窗骨架已实现。
-- 下一步需要实现截图触发、确认与提交流程。
+- Step-02 全局快捷键截图、确认与提交流程已实现。
+- 下一步需要实现本地会话存储与归档。

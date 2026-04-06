@@ -1,5 +1,9 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow';
+import { listen } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
+import CaptureConfirm from './CaptureConfirm';
+import type { CaptureRequest } from '../types/capture';
 
 type AvatarStatus = 'idle' | 'processing' | 'error';
 
@@ -10,13 +14,39 @@ const STATUS_CONFIG: Record<AvatarStatus, { label: string; color: string }> = {
 };
 
 function SidebarApp() {
-  // TODO: connect to real state from app store
   const [status] = useState<AvatarStatus>('idle');
+  const [captureImage, setCaptureImage] = useState<string | null>(null);
   const config = STATUS_CONFIG[status];
+
+  useEffect(() => {
+    const unlisten = listen<string>('capture-selected', (event) => {
+      setCaptureImage(event.payload);
+    });
+    return () => {
+      unlisten.then((fn) => fn());
+    };
+  }, []);
 
   async function handleClose() {
     await getCurrentWebviewWindow().hide();
   }
+
+  const handleSubmit = useCallback((request: CaptureRequest) => {
+    console.log('[Desktop Teacher] CaptureRequest:', {
+      hasImage: !!request.imageData,
+      textQuestion: request.textQuestion ?? '(none)',
+      timestamp: request.timestamp,
+    });
+  }, []);
+
+  const handleCancel = useCallback(() => {
+    setCaptureImage(null);
+  }, []);
+
+  const handleRecapture = useCallback(() => {
+    setCaptureImage(null);
+    invoke('capture_cancel').catch(() => {});
+  }, []);
 
   return (
     <div className="sidebar">
@@ -52,35 +82,44 @@ function SidebarApp() {
       </header>
 
       <main className="sidebar-body">
-        <div className="empty-state">
-          <div className="empty-icon">
-            <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-              <rect
-                x="4"
-                y="8"
-                width="40"
-                height="32"
-                rx="4"
-                stroke="currentColor"
-                strokeWidth="2"
-                fill="none"
-                opacity="0.4"
-              />
-              <path
-                d="M16 24L22 30L32 18"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                opacity="0.6"
-              />
-            </svg>
+        {captureImage ? (
+          <CaptureConfirm
+            imageData={captureImage}
+            onSubmit={handleSubmit}
+            onCancel={handleCancel}
+            onRecapture={handleRecapture}
+          />
+        ) : (
+          <div className="empty-state">
+            <div className="empty-icon">
+              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
+                <rect
+                  x="4"
+                  y="8"
+                  width="40"
+                  height="32"
+                  rx="4"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  fill="none"
+                  opacity="0.4"
+                />
+                <path
+                  d="M16 24L22 30L32 18"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  opacity="0.6"
+                />
+              </svg>
+            </div>
+            <p className="empty-text">按下 Ctrl+Shift+S 截屏提问</p>
+            <p className="empty-subtext">
+              或右键点击托盘图标开始
+            </p>
           </div>
-          <p className="empty-text">按下快捷键截屏提问</p>
-          <p className="empty-subtext">
-            或右键点击托盘图标开始
-          </p>
-        </div>
+        )}
       </main>
     </div>
   );

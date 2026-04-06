@@ -2,7 +2,7 @@
   "$schema": "../gen/schemas/desktop-schema.json",
   "identifier": "default",
   "description": "enables the default permissions",
-  "windows": ["main", "sidebar"],
+  "windows": ["main", "sidebar", "capture-overlay"],
   "permissions": [
     "core:default",
     "core:window:allow-show",
@@ -13,6 +13,10 @@
     "core:window:allow-set-size",
     "core:window:allow-is-visible",
     "core:window:allow-inner-size",
-    "core:window:allow-outer-size"
+    "core:window:allow-outer-size",
+    "core:window:allow-destroy",
+    "global-shortcut:allow-register",
+    "global-shortcut:allow-unregister",
+    "global-shortcut:allow-is-registered"
   ]
 }

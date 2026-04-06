@@ -1,9 +1,12 @@
+mod capture;
 mod tray;
 
+use capture::CaptureState;
 use std::fs;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use tauri::Manager;
+use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
 // ---- Data types matching TS types ----
 
@@ -224,7 +227,13 @@ fn storage_append_turn(
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let shortcut = Shortcut::new(
+        Some(Modifiers::CONTROL | Modifiers::SHIFT),
+        Code::KeyS,
+    );
+
     tauri::Builder::default()
+        .manage(CaptureState::default())
         .setup(|app| {
             if cfg!(debug_assertions) {
                 app.handle().plugin(
@@ -233,6 +242,23 @@ pub fn run() {
                         .build(),
                 )?;
             }
+
+            #[cfg(desktop)]
+            {
+                let shortcut = shortcut.clone();
+                app.handle().plugin(
+                    tauri_plugin_global_shortcut::Builder::new()
+                        .with_handler(move |app, _shortcut, event| {
+                            if event.state() == ShortcutState::Pressed {
+                                capture::trigger_capture(app);
+                            }
+                        })
+                        .build(),
+                )?;
+
+                app.global_shortcut().register(shortcut)?;
+            }
+
             if let Err(e) = tray::create_tray(app.handle()) {
                 eprintln!("Warning: tray icon unavailable ({}) — running without system tray", e);
             }
@@ -247,6 +273,11 @@ pub fn run() {
             storage_delete_conversation,
             storage_load_turns,
             storage_append_turn,
+            capture::capture_get_screenshot,
+            capture::capture_crop_region,
+            capture::capture_window_at_point,
+            capture::capture_cancel,
+            capture::capture_confirm_selection,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
