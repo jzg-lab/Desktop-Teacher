@@ -1,3 +1,4 @@
+use crate::window_utils;
 use base64::Engine;
 use image::DynamicImage;
 use std::sync::Mutex;
@@ -29,21 +30,10 @@ fn img_to_base64_jpeg(img: &DynamicImage) -> String {
     base64::engine::general_purpose::STANDARD.encode(buf.into_inner())
 }
 
-fn logical_monitor_rect<R: Runtime>(app: &AppHandle<R>) -> Option<(f64, f64, f64, f64)> {
-    let main_win = app.get_webview_window("main")?;
-    let monitor = main_win.primary_monitor().ok()??;
-    let scale = monitor.scale_factor();
-    let w = monitor.size().width as f64 / scale;
-    let h = monitor.size().height as f64 / scale;
-    let x = monitor.position().x as f64 / scale;
-    let y = monitor.position().y as f64 / scale;
-    Some((x, y, w, h))
-}
-
 // ---- Pre-created windows ----
 
 pub fn create_overlay_window<R: Runtime>(app: &AppHandle<R>) {
-    let Some((x, y, w, h)) = logical_monitor_rect(app) else {
+    let Some((x, y, w, h)) = window_utils::logical_monitor_rect(app) else {
         eprintln!("Warning: could not get monitor info for overlay creation");
         return;
     };
@@ -94,16 +84,7 @@ pub fn capture_crop_region(
 }
 
 #[tauri::command]
-pub fn capture_window_at_point(
-    state: tauri::State<'_, CaptureState>,
-    x: i32,
-    y: i32,
-) -> Result<String, String> {
-    {
-        let mut guard = state.image.lock().map_err(|e| e.to_string())?;
-        *guard = None;
-    }
-
+pub fn capture_window_at_point(x: i32, y: i32) -> Result<String, String> {
     let windows = xcap::Window::all().map_err(|e| e.to_string())?;
     let our_titles = ["Desktop Teacher"];
 
@@ -146,23 +127,8 @@ pub fn capture_cancel(app: AppHandle, state: tauri::State<'_, CaptureState>) -> 
         let mut guard = state.image.lock().map_err(|e| e.to_string())?;
         *guard = None;
     }
-    hide_overlay(&app);
+    window_utils::hide_overlay(&app);
     Ok(())
-}
-
-// ---- Window lifecycle ----
-
-fn hide_overlay<R: Runtime>(app: &AppHandle<R>) {
-    if let Some(win) = app.get_webview_window("capture-overlay") {
-        let _ = win.hide();
-    }
-}
-
-fn show_sidebar<R: Runtime>(app: &AppHandle<R>) {
-    if let Some(win) = app.get_webview_window("sidebar") {
-        let _ = win.show();
-        let _ = win.set_focus();
-    }
 }
 
 pub fn trigger_capture<R: Runtime>(app: &AppHandle<R>) {
@@ -220,8 +186,8 @@ pub fn trigger_capture<R: Runtime>(app: &AppHandle<R>) {
 
 #[tauri::command]
 pub fn capture_confirm_selection(app: AppHandle, image_data: String) -> Result<(), String> {
-    hide_overlay(&app);
-    show_sidebar(&app);
+    window_utils::hide_overlay(&app);
+    window_utils::show_sidebar(&app);
     app.emit_to("sidebar", "capture-selected", image_data)
         .map_err(|e| e.to_string())
 }

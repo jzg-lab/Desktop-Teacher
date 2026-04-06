@@ -1,3 +1,4 @@
+use crate::window_utils;
 /**
  * System tray icon + sidebar window management
  *
@@ -73,8 +74,7 @@ fn toggle_sidebar<R: Runtime>(app: &AppHandle<R>) {
         if window.is_visible().unwrap_or(false) {
             let _ = window.hide();
         } else {
-            let _ = window.show();
-            let _ = window.set_focus();
+            window_utils::show_sidebar(app);
         }
     } else {
         create_sidebar_window(app);
@@ -82,18 +82,10 @@ fn toggle_sidebar<R: Runtime>(app: &AppHandle<R>) {
 }
 
 pub fn create_sidebar_window<R: Runtime>(app: &AppHandle<R>) {
-    let Some(main_win) = app.get_webview_window("main") else {
+    let Some((screen_x, screen_y, screen_w, screen_h)) = window_utils::logical_monitor_rect(app)
+    else {
         return;
     };
-    let Ok(Some(monitor)) = main_win.primary_monitor() else {
-        return;
-    };
-
-    let scale = monitor.scale_factor();
-    let screen_w = monitor.size().width as f64 / scale;
-    let screen_h = monitor.size().height as f64 / scale;
-    let screen_x = monitor.position().x as f64 / scale;
-    let screen_y = monitor.position().y as f64 / scale;
 
     let sidebar_width = 380.0;
     let sidebar_height = (screen_h * 0.75).min(720.0);

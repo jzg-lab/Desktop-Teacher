@@ -1,12 +1,13 @@
 #[cfg(target_os = "windows")]
 mod capture;
 mod tray;
+mod window_utils;
 
 #[cfg(target_os = "windows")]
 use capture::CaptureState;
+use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 use tauri::Manager;
 #[cfg(target_os = "windows")]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
@@ -217,7 +218,11 @@ fn storage_append_turn(
     fs::write(&path, turns_json).expect("Failed to write turns");
 
     let mut index = read_index(&app);
-    if let Some(entry) = index.conversations.iter_mut().find(|c| c.id == conversation_id) {
+    if let Some(entry) = index
+        .conversations
+        .iter_mut()
+        .find(|c| c.id == conversation_id)
+    {
         entry.updated_at = now_rfc3339();
     }
     index.last_updated = now_rfc3339();
@@ -230,10 +235,7 @@ fn storage_append_turn(
 
 #[cfg(target_os = "windows")]
 fn build_app() -> tauri::Builder<tauri::Wry> {
-    let shortcut = Shortcut::new(
-        Some(Modifiers::CONTROL | Modifiers::SHIFT),
-        Code::KeyS,
-    );
+    let shortcut = Shortcut::new(Some(Modifiers::CONTROL | Modifiers::SHIFT), Code::KeyS);
 
     tauri::Builder::default()
         .manage(CaptureState::default())
@@ -261,7 +263,10 @@ fn build_app() -> tauri::Builder<tauri::Wry> {
             tray::create_sidebar_window(app.handle());
 
             if let Err(e) = tray::create_tray(app.handle()) {
-                eprintln!("Warning: tray icon unavailable ({}) — running without system tray", e);
+                eprintln!(
+                    "Warning: tray icon unavailable ({}) — running without system tray",
+                    e
+                );
             }
             Ok(())
         })
@@ -295,7 +300,10 @@ fn build_app() -> tauri::Builder<tauri::Wry> {
             }
 
             if let Err(e) = tray::create_tray(app.handle()) {
-                eprintln!("Warning: tray icon unavailable ({}) — running without system tray", e);
+                eprintln!(
+                    "Warning: tray icon unavailable ({}) — running without system tray",
+                    e
+                );
             }
             Ok(())
         })

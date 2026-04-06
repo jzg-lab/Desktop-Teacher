@@ -19,7 +19,6 @@ import { invoke } from "@tauri-apps/api/core";
 import type {
   ConversationMeta,
   Turn,
-  Attachment,
   ConversationIndex,
 } from "./types";
 
@@ -27,10 +26,6 @@ import type {
 
 export async function loadIndex(): Promise<ConversationIndex> {
   return invoke<ConversationIndex>("storage_load_index");
-}
-
-export async function saveIndex(index: ConversationIndex): Promise<void> {
-  await invoke("storage_save_index", { index });
 }
 
 // ---------- Conversation ----------
@@ -74,18 +69,4 @@ export async function appendTurn(
   turn: Omit<Turn, "id" | "conversation_id" | "created_at">,
 ): Promise<Turn> {
   return invoke<Turn>("storage_append_turn", { conversationId, turn });
-}
-
-// ---------- Attachments ----------
-
-export async function saveAttachment(
-  conversationId: string,
-  turnId: string,
-  attachment: Omit<Attachment, "id">,
-): Promise<Attachment> {
-  return invoke<Attachment>("storage_save_attachment", {
-    conversationId,
-    turnId,
-    attachment,
-  });
 }
