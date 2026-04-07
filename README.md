@@ -62,12 +62,40 @@ docs/              # 产品文档
 
 ## 开发
 
+### 1. 安装依赖
+
 ```bash
 npm install
-npm run tauri dev
 ```
 
 需要安装 [Rust](https://rustup.rs/) 工具链。
+
+### 2. 配置环境变量
+
+```bash
+cp .env.example .env
+```
+
+编辑 `.env` 填入至少一个 LLM provider 的 API Key：
+
+```env
+# 选择默认 provider（openai 或 qwen）
+VITE_LLM_DEFAULT_PROVIDER=openai
+
+# OpenAI
+VITE_OPENAI_API_KEY=sk-your-openai-key
+
+# Qwen / DashScope（可选，两个配一个即可）
+VITE_QWEN_API_KEY=sk-your-dashscope-key
+```
+
+详细配置项见 `.env.example` 和 `docs/architecture.md` §5.3。
+
+### 3. 启动开发服务器
+
+```bash
+npm run tauri dev
+```
 
 ## 注意
 
