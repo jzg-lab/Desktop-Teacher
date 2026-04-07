@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import Markdown from "react-markdown";
 import { useConversationContext } from "../hooks/ConversationContext";
 import type { Turn } from "../services/storage";
 
@@ -15,14 +16,14 @@ interface ChatViewProps {
 }
 
 function ChatView({ onSend, loading }: ChatViewProps) {
-  const { turns, closeConversation, activeConversation } =
+  const { turns, streamingText, closeConversation, activeConversation } =
     useConversationContext();
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [turns.length]);
+  }, [turns.length, streamingText]);
 
   function handleSend() {
     const text = input.trim();
@@ -64,10 +65,23 @@ function ChatView({ onSend, loading }: ChatViewProps) {
           .filter((t) => t.role !== "system")
           .map((turn: Turn) => (
             <div key={turn.id} className={`chat-turn chat-turn-${turn.role}`}>
-              <div className="chat-turn-content">{turn.content}</div>
+              <div className="chat-turn-content">
+                {turn.role === "assistant" ? (
+                  <Markdown>{turn.content}</Markdown>
+                ) : (
+                  turn.content
+                )}
+              </div>
               <div className="chat-turn-time">{formatTime(turn.created_at)}</div>
             </div>
           ))}
+        {streamingText && (
+          <div className="chat-turn chat-turn-assistant">
+            <div className="chat-turn-content">
+              <Markdown>{streamingText}</Markdown>
+            </div>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
 

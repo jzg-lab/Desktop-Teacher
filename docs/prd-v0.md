@@ -383,8 +383,8 @@ MVP 应定义为：
 12. 历史会话归档在 `V0` 默认仅本地存储，不做云同步。
 13. 技术方案暂定兼容 `OpenAI` 与 `Qwen` 两类 provider，通过统一模型适配层接入。
 
-## 15. 仍需拍板的问题
+## 15. 已拍板的问题
 
-1. `OpenAI` 与 `Qwen` 各自首选接入的具体模型 ID 是什么。
-2. provider 配置是做统一 OpenAI-compatible 接口，还是分别维护适配器。
-3. Windows 桌面壳首版采用什么技术栈。
+1. ~~`OpenAI` 与 `Qwen` 各自首选接入的具体模型 ID~~ → OpenAI: `gpt-4o`，Qwen: `qwen-plus`（均可通过环境变量配置）。
+2. ~~provider 配置是做统一 OpenAI-compatible 接口，还是分别维护适配器~~ → 统一 OpenAI-compatible 基础适配器。
+3. ~~Windows 桌面壳首版采用什么技术栈~~ → Tauri 2 (Rust + WebView)。

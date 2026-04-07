@@ -106,11 +106,15 @@ flowchart LR
 - 模型供应商和具体模型 ID 可以更换，但对上层产品行为应保持一致的接口契约。
 - 上层业务逻辑不应直接依赖某一家 provider 的 SDK 细节。
 
-### 6.3 未定项
+### 6.3 已确认
 
-- `TBD-1`：OpenAI provider 首选接入的具体模型 ID 与请求参数。
-- `TBD-2`：Qwen provider 首选接入的具体模型 ID 与请求参数。
-- `TBD-3`：provider 适配层是统一 OpenAI-compatible 接口优先，还是分别维护 OpenAI/Qwen 原生适配器。
+- `DEC-1`：OpenAI provider 使用 `gpt-4o`，可通过 `VITE_OPENAI_MODEL` 配置。
+- `DEC-2`：Qwen provider 使用 `qwen-plus`，可通过 `VITE_QWEN_MODEL` 配置。
+- `DEC-3`：统一 OpenAI-compatible 基础适配器，OpenAI 和 Qwen 仅配置差异（baseURL / apiKey / model）。
+
+### 6.4 未定项
+
+（暂无）
 
 ## 7. 用户用例
 
@@ -480,8 +484,8 @@ flowchart LR
 - 模型适配层必须与上层 UI/业务逻辑解耦，否则更换模型成本会很高。
 - 工具调用状态必须可见，否则用户会把所有延迟都算到“模型又傻又慢”头上。
 
-## 15. 待确认问题
+## 15. 已确认问题
 
-- `TBD-1` OpenAI provider 首选模型 ID 与最小可用参数集。
-- `TBD-2` Qwen provider 首选模型 ID 与最小可用参数集。
-- `TBD-3` provider 适配层采用统一兼容协议优先，还是分别维护原生适配器。
+- ~~`TBD-1` OpenAI provider 首选模型 ID~~ → `gpt-4o`（可配置）
+- ~~`TBD-2` Qwen provider 首选模型 ID~~ → `qwen-plus`（可配置）
+- ~~`TBD-3` provider 适配层~~ → 统一 OpenAI-compatible 基础适配器

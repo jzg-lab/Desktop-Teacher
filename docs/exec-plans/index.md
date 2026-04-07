@@ -36,7 +36,7 @@
 2. ~~step-01-desktop-shell-and-avatar.md~~ ✓
 3. ~~step-02-capture-and-submit.md~~ ✓
 4. ~~step-03-local-conversations-and-archive.md~~ ✓
-5. [step-04-model-adapter-and-answering.md](step-04-model-adapter-and-answering.md)
+5. ~~step-04-model-adapter-and-answering.md~~ ✓
 6. [step-05-follow-up-chat.md](step-05-follow-up-chat.md)
 7. [step-06-search-skills-and-routing.md](step-06-search-skills-and-routing.md)
 8. [step-07-errors-and-observability.md](step-07-errors-and-observability.md)
@@ -44,6 +44,6 @@
 
 ## 当前下一步
 
-- [step-04-model-adapter-and-answering.md](step-04-model-adapter-and-answering.md)
+- [step-05-follow-up-chat.md](step-05-follow-up-chat.md)
 
-Step-00 ~ Step-03 已完成，下一步需要实现模型适配层与回答生成。
+Step-00 ~ Step-04 已完成，下一步需要实现追问与多轮对话增强。

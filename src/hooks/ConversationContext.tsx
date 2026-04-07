@@ -33,6 +33,7 @@ interface ConversationState {
   turns: Turn[];
   viewMode: ViewMode;
   loading: boolean;
+  streamingText: string;
 }
 
 interface ConversationActions {
@@ -48,6 +49,7 @@ interface ConversationActions {
   removeConversation: (id: string) => Promise<void>;
   showHistory: () => void;
   dismissHistory: () => void;
+  setStreamingText: (text: string) => void;
 }
 
 type ConversationContextValue = ConversationState & ConversationActions;
@@ -76,6 +78,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     turns: [],
     viewMode: "empty",
     loading: false,
+    streamingText: "",
   });
 
   useEffect(() => {
@@ -85,6 +88,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
         turns: [],
         viewMode: "empty",
         loading: false,
+        streamingText: "",
       });
     }
 
@@ -104,6 +108,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
           turns: [],
           viewMode: "chat",
           loading: false,
+          streamingText: "",
         });
         return meta;
       } catch (err) {
@@ -124,6 +129,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
           turns,
           viewMode: "chat",
           loading: false,
+          streamingText: "",
         });
       } catch (err) {
         setState((prev) => ({ ...prev, loading: false }));
@@ -167,6 +173,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
       turns: [],
       viewMode: "empty",
       loading: false,
+      streamingText: "",
     });
   }, []);
 
@@ -179,6 +186,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
           turns: [],
           viewMode: "empty",
           loading: false,
+          streamingText: "",
         });
       }
     },
@@ -196,6 +204,10 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     }));
   }, []);
 
+  const setStreamingText = useCallback((text: string) => {
+    setState((prev) => ({ ...prev, streamingText: text }));
+  }, []);
+
   const value: ConversationContextValue = {
     ...state,
     startNewConversation,
@@ -205,6 +217,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     removeConversation,
     showHistory,
     dismissHistory,
+    setStreamingText,
   };
 
   return (

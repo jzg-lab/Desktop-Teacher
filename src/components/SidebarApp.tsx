@@ -10,6 +10,9 @@ import {
   useConversationContext,
 } from "../hooks/ConversationContext";
 import type { CaptureRequest } from "../types/capture";
+import { getLLMClient } from "../services/llm";
+import { buildSystemPrompt, buildUserContent } from "../services/llm/prompt";
+import type { ChatMessage } from "../services/llm";
 
 type AvatarStatus = "idle" | "processing" | "error";
 
@@ -27,12 +30,14 @@ function SidebarAppInner() {
   const {
     viewMode,
     activeConversation,
+    turns,
     startNewConversation,
     appendTurn,
     closeConversation,
     showHistory,
     dismissHistory,
     loading: ctxLoading,
+    setStreamingText,
   } = useConversationContext();
 
   useEffect(() => {
@@ -65,23 +70,45 @@ function SidebarAppInner() {
           convId = meta.id;
         }
 
-        const questionText =
-          request.textQuestion ?? "请解释这张截图中的内容";
+        const hasQuestion = !!request.textQuestion;
+        const questionText = request.textQuestion ?? "请解释这张截图中的内容";
         await appendTurn("user", questionText, null, convId);
-        await appendTurn(
-          "assistant",
-          "（模型回答将在 step-04 接入后实现）",
-          "direct",
-          convId,
-        );
+
+        const systemPrompt = buildSystemPrompt(true, hasQuestion);
+        const userContent = buildUserContent(request.imageData, request.textQuestion);
+        const historyMessages: ChatMessage[] = turns
+          .filter((t) => t.role !== "system" && t.content)
+          .map((t) => ({
+            role: t.role as "user" | "assistant",
+            content: t.content,
+          }));
+        const messages: ChatMessage[] = [
+          { role: "system", content: systemPrompt },
+          ...historyMessages,
+          { role: "user", content: userContent },
+        ];
+
+        let fullText = "";
+        setStreamingText("");
+        const client = getLLMClient();
+
+        for await (const chunk of client.chatStream({ model: "", messages })) {
+          const delta = chunk.choices?.[0]?.delta?.content ?? "";
+          fullText += delta;
+          setStreamingText(fullText);
+        }
+
+        setStreamingText("");
+        await appendTurn("assistant", fullText, "direct", convId);
 
         setCaptureImage(null);
         setStatus("idle");
       } catch {
+        setStreamingText("");
         setStatus("error");
       }
     },
-    [activeConversation, startNewConversation, appendTurn],
+    [activeConversation, startNewConversation, appendTurn, turns, setStreamingText],
   );
 
   const handleCancel = useCallback(() => {
@@ -98,17 +125,39 @@ function SidebarAppInner() {
       setStatus("processing");
       try {
         await appendTurn("user", text);
-        await appendTurn(
-          "assistant",
-          "（模型回答将在 step-04 接入后实现）",
-          "direct",
-        );
+
+        const systemPrompt = buildSystemPrompt(false, true);
+        const historyMessages: ChatMessage[] = turns
+          .filter((t) => t.role !== "system" && t.content)
+          .map((t) => ({
+            role: t.role as "user" | "assistant",
+            content: t.content,
+          }));
+        const messages: ChatMessage[] = [
+          { role: "system", content: systemPrompt },
+          ...historyMessages,
+          { role: "user", content: text },
+        ];
+
+        let fullText = "";
+        setStreamingText("");
+        const client = getLLMClient();
+
+        for await (const chunk of client.chatStream({ model: "", messages })) {
+          const delta = chunk.choices?.[0]?.delta?.content ?? "";
+          fullText += delta;
+          setStreamingText(fullText);
+        }
+
+        setStreamingText("");
+        await appendTurn("assistant", fullText, "direct");
         setStatus("idle");
       } catch {
+        setStreamingText("");
         setStatus("error");
       }
     },
-    [appendTurn],
+    [appendTurn, turns, setStreamingText],
   );
 
   const showCapture = captureImage && viewMode !== "history";

@@ -17,7 +17,7 @@
 ```
 src/
   services/
-    llm/          # Provider 适配层 (types, adapter, openai, qwen, client)
+    llm/          # Provider 适配层 (types, adapter, openai, qwen, client, init, prompt)
     storage/      # 本地会话存储 (types, conversation)
   components/     # React 组件
   hooks/          # React hooks
@@ -58,7 +58,7 @@ docs/              # 产品文档
 | step-01 桌面壳与角色图标 | Done |
 | step-02 截图与提交 | Done |
 | step-03 本地会话与归档 | Done |
-| step-04 模型适配与回答 | Next |
+| step-04 模型适配与回答 | Done |
 
 ## 开发
 

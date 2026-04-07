@@ -9,3 +9,5 @@ export { OpenAICompatibleAdapter, type OpenAICompatibleConfig } from "./openai-c
 export { OpenAIAdapter, type OpenAIConfig } from "./openai";
 export { QwenAdapter, type QwenConfig } from "./qwen";
 export { UnifiedLLMClient, type LLMClientConfig } from "./client";
+export { getLLMClient, createLLMClient } from "./init";
+export { buildSystemPrompt, buildUserContent } from "./prompt";

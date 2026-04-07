@@ -581,3 +581,73 @@
   opacity: 0.4;
   cursor: not-allowed;
 }
+
+.chat-turn-assistant .chat-turn-content p {
+  margin: 0 0 8px;
+}
+
+.chat-turn-assistant .chat-turn-content p:last-child {
+  margin-bottom: 0;
+}
+
+.chat-turn-assistant .chat-turn-content h1,
+.chat-turn-assistant .chat-turn-content h2,
+.chat-turn-assistant .chat-turn-content h3 {
+  margin: 12px 0 6px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.chat-turn-assistant .chat-turn-content h1 { font-size: 15px; }
+.chat-turn-assistant .chat-turn-content h2 { font-size: 14px; }
+.chat-turn-assistant .chat-turn-content h3 { font-size: 13px; }
+
+.chat-turn-assistant .chat-turn-content ul,
+.chat-turn-assistant .chat-turn-content ol {
+  margin: 6px 0;
+  padding-left: 20px;
+}
+
+.chat-turn-assistant .chat-turn-content li {
+  margin: 2px 0;
+}
+
+.chat-turn-assistant .chat-turn-content code {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  padding: 1px 5px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+.chat-turn-assistant .chat-turn-content pre {
+  margin: 8px 0;
+  padding: 10px 12px;
+  background: var(--bg-secondary);
+  border-radius: var(--radius-sm);
+  overflow-x: auto;
+}
+
+.chat-turn-assistant .chat-turn-content pre code {
+  padding: 0;
+  background: none;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.chat-turn-assistant .chat-turn-content blockquote {
+  margin: 6px 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.chat-turn-assistant .chat-turn-content strong {
+  font-weight: 600;
+}
+
+.chat-turn-assistant .chat-turn-content hr {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 8px 0;
+}
