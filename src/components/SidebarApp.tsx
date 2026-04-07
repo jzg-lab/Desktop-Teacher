@@ -55,6 +55,24 @@ function SidebarAppInner() {
     await getCurrentWebviewWindow().hide();
   }
 
+  async function streamAndSave(
+    messages: ChatMessage[],
+    convId?: string,
+  ): Promise<void> {
+    let fullText = "";
+    setStreamingText("");
+    const client = getLLMClient();
+
+    for await (const chunk of client.chatStream({ messages })) {
+      const delta = chunk.choices?.[0]?.delta?.content ?? "";
+      fullText += delta;
+      setStreamingText(fullText);
+    }
+
+    setStreamingText("");
+    await appendTurn("assistant", fullText, "direct", convId);
+  }
+
   const handleSubmit = useCallback(
     async (request: CaptureRequest) => {
       setStatus("processing");
@@ -88,18 +106,7 @@ function SidebarAppInner() {
           { role: "user", content: userContent },
         ];
 
-        let fullText = "";
-        setStreamingText("");
-        const client = getLLMClient();
-
-        for await (const chunk of client.chatStream({ model: "", messages })) {
-          const delta = chunk.choices?.[0]?.delta?.content ?? "";
-          fullText += delta;
-          setStreamingText(fullText);
-        }
-
-        setStreamingText("");
-        await appendTurn("assistant", fullText, "direct", convId);
+        await streamAndSave(messages, convId);
 
         setCaptureImage(null);
         setStatus("idle");
@@ -108,7 +115,7 @@ function SidebarAppInner() {
         setStatus("error");
       }
     },
-    [activeConversation, startNewConversation, appendTurn, turns, setStreamingText],
+    [activeConversation, startNewConversation, appendTurn, turns, setStreamingText, streamAndSave],
   );
 
   const handleCancel = useCallback(() => {
@@ -139,25 +146,15 @@ function SidebarAppInner() {
           { role: "user", content: text },
         ];
 
-        let fullText = "";
-        setStreamingText("");
-        const client = getLLMClient();
+        await streamAndSave(messages);
 
-        for await (const chunk of client.chatStream({ model: "", messages })) {
-          const delta = chunk.choices?.[0]?.delta?.content ?? "";
-          fullText += delta;
-          setStreamingText(fullText);
-        }
-
-        setStreamingText("");
-        await appendTurn("assistant", fullText, "direct");
         setStatus("idle");
       } catch {
         setStreamingText("");
         setStatus("error");
       }
     },
-    [appendTurn, turns, setStreamingText],
+    [appendTurn, turns, setStreamingText, streamAndSave],
   );
 
   const showCapture = captureImage && viewMode !== "history";

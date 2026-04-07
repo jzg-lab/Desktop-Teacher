@@ -1,4 +1,3 @@
-import type { ProviderAdapter } from "./adapter";
 import { OpenAICompatibleAdapter } from "./openai-compatible";
 
 export interface QwenConfig {
@@ -7,7 +6,7 @@ export interface QwenConfig {
   defaultModel?: string;
 }
 
-export class QwenAdapter extends OpenAICompatibleAdapter implements ProviderAdapter {
+export class QwenAdapter extends OpenAICompatibleAdapter {
   readonly name = "qwen";
 
   constructor(config: QwenConfig) {

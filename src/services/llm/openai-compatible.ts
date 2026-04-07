@@ -90,7 +90,7 @@ export abstract class OpenAICompatibleAdapter implements ProviderAdapter {
 
   private buildBody(req: ChatRequest, stream: boolean) {
     return {
-      model: req.model ?? this.defaultModel,
+      model: req.model || this.defaultModel,
       messages: req.messages,
       stream,
       ...(req.temperature != null && { temperature: req.temperature }),

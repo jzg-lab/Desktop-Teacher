@@ -1,4 +1,3 @@
-import type { ProviderAdapter } from "./adapter";
 import { OpenAICompatibleAdapter } from "./openai-compatible";
 
 export interface OpenAIConfig {
@@ -7,7 +6,7 @@ export interface OpenAIConfig {
   defaultModel?: string;
 }
 
-export class OpenAIAdapter extends OpenAICompatibleAdapter implements ProviderAdapter {
+export class OpenAIAdapter extends OpenAICompatibleAdapter {
   readonly name = "openai";
 
   constructor(config: OpenAIConfig) {

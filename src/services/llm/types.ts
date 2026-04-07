@@ -26,7 +26,7 @@ export interface ChatMessage {
 // ---------- 请求 ----------
 
 export interface ChatRequest {
-  model: string;
+  model?: string;
   messages: ChatMessage[];
   stream?: boolean;
   temperature?: number;
@@ -79,10 +79,8 @@ export interface ChatStreamChunk {
 
 // ---------- 路由元数据（SRS FR-048） ----------
 
-export type RouteType =
-  | "direct"          // 纯模型直答
-  | "search"          // 搜索增强
-  | "extraction";     // 来源提取增强
+export type { RouteType } from "../storage/types";
+import type { RouteType } from "../storage/types";
 
 export interface RouteMetadata {
   route_type: RouteType;
