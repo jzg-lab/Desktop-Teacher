@@ -5,10 +5,12 @@ import { invoke } from "@tauri-apps/api/core";
 import CaptureConfirm from "./CaptureConfirm";
 import HistoryList from "./HistoryList";
 import ChatView from "./ChatView";
+import SettingsModal from "./SettingsModal";
 import {
   ConversationProvider,
   useConversationContext,
 } from "../hooks/ConversationContext";
+import { SettingsProvider } from "../hooks/SettingsContext";
 import type { CaptureRequest } from "../types/capture";
 import { getLLMClient } from "../services/llm";
 import { buildContextMessages } from "../services/llm/context";
@@ -25,6 +27,7 @@ const STATUS_CONFIG: Record<AvatarStatus, { label: string; color: string }> = {
 function SidebarAppInner() {
   const [status, setStatus] = useState<AvatarStatus>("idle");
   const [pendingCaptureImage, setPendingCaptureImage] = useState<string | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
   const config = STATUS_CONFIG[status];
 
   const {
@@ -171,6 +174,22 @@ function SidebarAppInner() {
         <div className="header-actions">
           <button
             className="header-btn"
+            onClick={() => setShowSettings(true)}
+            aria-label="设置"
+            title="设置"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path
+                d="M5.8 1.4l-.3 1.5c-.4.2-.8.4-1.1.7l-1.5-.5-.8 1.4 1.1 1.1c0 .2 0 .4 0 .6s0 .4 0 .6l-1.1 1.1.8 1.4 1.5-.5c.3.3.7.5 1.1.7l.3 1.5h1.6l.3-1.5c.4-.2.8-.4 1.1-.7l1.5.5.8-1.4-1.1-1.1c0-.2 0-.4 0-.6s0-.4 0-.6l1.1-1.1-.8-1.4-1.5.5c-.3-.3-.7-.5-1.1-.7L7.4 1.4H5.8z"
+                stroke="currentColor"
+                strokeWidth="1.2"
+                strokeLinejoin="round"
+              />
+              <circle cx="6.6" cy="7" r="2" stroke="currentColor" strokeWidth="1.2" />
+            </svg>
+          </button>
+          <button
+            className="header-btn"
             onClick={showHistory}
             aria-label="历史会话"
             title="历史会话"
@@ -252,15 +271,21 @@ function SidebarAppInner() {
           </div>
         )}
       </main>
+
+      {showSettings && (
+        <SettingsModal onClose={() => setShowSettings(false)} />
+      )}
     </div>
   );
 }
 
 function SidebarApp() {
   return (
-    <ConversationProvider>
-      <SidebarAppInner />
-    </ConversationProvider>
+    <SettingsProvider>
+      <ConversationProvider>
+        <SidebarAppInner />
+      </ConversationProvider>
+    </SettingsProvider>
   );
 }
 

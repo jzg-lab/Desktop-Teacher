@@ -9,6 +9,39 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use tauri::Manager;
+
+// ---- Settings types ----
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ProviderConfig {
+    pub api_key: String,
+    #[serde(default)]
+    pub base_url: Option<String>,
+    #[serde(default)]
+    pub model: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AppSettings {
+    pub default_provider: String,
+    #[serde(default)]
+    pub openai: Option<ProviderConfig>,
+    #[serde(default)]
+    pub qwen: Option<ProviderConfig>,
+}
+
+impl Default for AppSettings {
+    fn default() -> Self {
+        Self {
+            default_provider: "openai".to_string(),
+            openai: None,
+            qwen: None,
+        }
+    }
+}
+
 #[cfg(target_os = "windows")]
 use tauri_plugin_global_shortcut::{Code, GlobalShortcutExt, Modifiers, Shortcut, ShortcutState};
 
@@ -58,6 +91,13 @@ fn data_dir(app: &tauri::AppHandle) -> PathBuf {
     let conv_dir = dir.join("conversations");
     fs::create_dir_all(&conv_dir).expect("Failed to create conversations dir");
     conv_dir
+}
+
+fn settings_path(app: &tauri::AppHandle) -> PathBuf {
+    app.path()
+        .app_data_dir()
+        .expect("Failed to resolve app data dir")
+        .join("settings.json")
 }
 
 fn index_path(app: &tauri::AppHandle) -> PathBuf {
@@ -231,6 +271,26 @@ fn storage_append_turn(
     turn
 }
 
+// ---- Settings commands ----
+
+#[tauri::command]
+fn settings_load(app: tauri::AppHandle) -> AppSettings {
+    let path = settings_path(&app);
+    if path.exists() {
+        let content = fs::read_to_string(&path).expect("Failed to read settings");
+        serde_json::from_str(&content).unwrap_or_default()
+    } else {
+        AppSettings::default()
+    }
+}
+
+#[tauri::command]
+fn settings_save(app: tauri::AppHandle, settings: AppSettings) {
+    let path = settings_path(&app);
+    let content = serde_json::to_string_pretty(&settings).expect("Failed to serialize settings");
+    fs::write(&path, content).expect("Failed to write settings");
+}
+
 // ---- App entry ----
 
 #[cfg(target_os = "windows")]
@@ -279,6 +339,8 @@ fn build_app() -> tauri::Builder<tauri::Wry> {
             storage_delete_conversation,
             storage_load_turns,
             storage_append_turn,
+            settings_load,
+            settings_save,
             capture::capture_get_screenshot,
             capture::capture_crop_region,
             capture::capture_window_at_point,
@@ -316,6 +378,8 @@ fn build_app() -> tauri::Builder<tauri::Wry> {
             storage_delete_conversation,
             storage_load_turns,
             storage_append_turn,
+            settings_load,
+            settings_save,
         ])
 }
 

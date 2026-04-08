@@ -19,17 +19,19 @@ src/
   services/
     llm/          # Provider 适配层 (types, adapter, openai, qwen, client, init, prompt)
     storage/      # 本地会话存储 (types, conversation)
-  components/     # React 组件
-  hooks/          # React hooks
+    settings/     # 应用设置 (types, load/save via Tauri)
+  components/     # React 组件 (SidebarApp, CaptureOverlay, CaptureConfirm, SettingsModal)
+  hooks/          # React hooks (ConversationContext, SettingsContext)
 src-tauri/         # Tauri Rust 后端
   src/
-    lib.rs         # 存储命令 + 应用入口
+    lib.rs         # 存储/设置命令 + 应用入口
     main.rs        # Windows 入口
   Cargo.toml
   tauri.conf.json
 docs/              # 产品文档
   prd-v0.md
   srs-v0.md
+  architecture.md
   exec-plans/
 .env.example       # 环境变量模板
 ```
@@ -71,7 +73,13 @@ npm install
 
 需要安装 [Rust](https://rustup.rs/) 工具链。
 
-### 2. 配置环境变量
+### 2. 配置 LLM Provider
+
+有两种配置方式：
+
+**方式一：界面配置（推荐）** — 启动应用后，点击侧边栏标题栏左侧齿轮图标，在设置弹窗中选择 Provider 并填入 API Key。配置保存后立即生效。
+
+**方式二：环境变量（回退）** — 复制模板并编辑：
 
 ```bash
 cp .env.example .env
@@ -90,7 +98,7 @@ VITE_OPENAI_API_KEY=sk-your-openai-key
 VITE_QWEN_API_KEY=sk-your-dashscope-key
 ```
 
-详细配置项见 `.env.example` 和 `docs/architecture.md` §5.3。
+UI 配置优先于环境变量。详细配置项见 `.env.example` 和 `docs/architecture.md` §5.3。
 
 ### 3. 启动开发服务器
 
