@@ -59,6 +59,7 @@ docs/              # 产品文档
 | step-02 截图与提交 | Done |
 | step-03 本地会话与归档 | Done |
 | step-04 模型适配与回答 | Done |
+| step-05 多轮追问与上下文保持 | Done |
 
 ## 开发
 

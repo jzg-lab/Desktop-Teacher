@@ -95,6 +95,7 @@ src/services/llm/
   client.ts            # UnifiedLLMClient — provider 注册表 + 路由
   init.ts              # 从 VITE_ 环境变量创建/缓存 LLMClient 实例
   prompt.ts            # 老师式系统指令构建 (SRS FR-033)
+  context.ts           # 线程上下文管理（Turn→ChatMessage 转换 + 截断策略）
   index.ts             # 统一导出
 ```
 
@@ -106,22 +107,27 @@ src/services/llm/
 - `UnifiedLLMClient` 维护 provider 注册表，根据默认 provider 或显式指定路由到具体适配器。
 - LLM 调用在前端 WebView 中直接发起 HTTP，不经 Rust 后端。
 - `init.ts` 提供单例 `getLLMClient()` 从环境变量初始化客户端。
-- `prompt.ts` 构建老师式系统指令（SRS FR-033：这是什么/为什么重要/如何理解）。
+- `prompt.ts` 构建老师式系统指令（SRS FR-033：这是什么/为什么重要/如何理解），追问时附带上下文衔接提示。
+- `context.ts` 管理线程上下文：将 Turn[] 转换为 LLM ChatMessage[]，首条 user Turn 携带截图，追问时历史上下文自动传递；定义上下文长度上限（`MAX_CONTEXT_CHARS=16000`，约 4000 tokens）和 Turn 上限（`MAX_CONTEXT_TURNS=20`）；截断策略保留 system prompt + 首条 user（含截图）+ 首条 assistant 回复作为锚点，然后保留最近 4 条 Turn，超限时从中间丢弃。
 
-### 2.5 流式回答与渲染
+### 2.5 流式回答与上下文管理
 
 ```
-SidebarApp → getLLMClient().chatStream()
+SidebarApp → buildContextMessages()   构建 ChatMessage[]（含历史 + 截图 + 截断）
+           → getLLMClient().chatStream()
            → for-await 累积文本
            → ConversationContext.streamingText（React state）
            → ChatView 实时显示
            → appendTurn("assistant", fullText) 持久化
 ```
 
+- `buildContextMessages()` 统一构建 LLM 请求消息数组，处理首次截图提问和追问两种场景。
 - 模型回答通过 SSE 流式返回，前端逐块累积并实时渲染。
 - 流式期间 `streamingText` 保持在 React state 中，不写入存储。
 - 流完成后一次性 `appendTurn` 写入本地 Turn。
 - ChatView 使用 `react-markdown` 渲染 assistant 消息中的 Markdown 内容。
+- 追问时截图上下文保留：`ConversationContext.captureImageData` 保存当前会话关联的截图 base64，关闭窗口时清空。首条 user Turn 通过 `buildUserContent` 携带截图，后续追问可引用。
+- 上下文截断：当历史 Turn 总字符数超过 `MAX_CONTEXT_CHARS`（16000）或 Turn 数超过 `MAX_CONTEXT_TURNS`（20），按策略截断——始终保留首条 user+assistant 对（含截图锚点）和最近 4 条 Turn。
 
 ### 2.4 存储层
 
@@ -278,6 +284,8 @@ RouteMetadata            (每轮回答的路由记录)
 当前无全局状态库（Redux / Zustand / Context）。各组件使用：
 
 - **React `useState` / `useEffect`**：组件内局部状态。
-- **ConversationContext**：当前活跃会话状态（会话 ID、Turn 列表、流式文本、视图模式）。
+- **ConversationContext**：当前活跃会话状态（会话 ID、Turn 列表、流式文本、关联截图 base64、视图模式）。
 - **Tauri event bus**（`listen` / `emit`）：Rust → 前端的跨窗口通知（如 `capture-selected`）。
 - **Tauri `invoke`**：前端 → Rust 的命令调用。
+
+`captureImageData` 在 `ConversationContext` 中保存当前会话的截图数据，确保追问时 LLM 上下文仍可引用截图内容。窗口关闭时自动清空（SRS FR-051）。

@@ -19,6 +19,7 @@ export function buildSystemPrompt(hasImage: boolean, hasQuestion: boolean): stri
 - 仔细观察截图中所有可见内容（文字、图表、界面、代码、公式等）
 - 如果截图中有报错信息，解释含义并给出排查方向
 - 如果截图中有代码，逐行或逐段分析关键逻辑`
+
     : "";
 
   const noQuestion = hasImage && !hasQuestion
@@ -30,7 +31,16 @@ export function buildSystemPrompt(hasImage: boolean, hasQuestion: boolean): stri
 3. **如何理解**：给出理解该内容的方法或下一步建议`
     : "";
 
-  return base + withImage + noQuestion;
+  const followUp = !hasImage
+    ? `
+
+关于追问：
+- 你可以引用之前对话中讨论过的内容
+- 如果用户追问的内容与之前截图有关，结合之前的分析继续回答
+- 保持回答的连贯性，不要重复已经解释过的内容`
+    : "";
+
+  return base + withImage + noQuestion + followUp;
 }
 
 /** @param imageData base64 图片数据（不含 data: 前缀） @param textQuestion 用户文本问题 */

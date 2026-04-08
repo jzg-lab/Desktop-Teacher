@@ -11,7 +11,7 @@ import {
 } from "../hooks/ConversationContext";
 import type { CaptureRequest } from "../types/capture";
 import { getLLMClient } from "../services/llm";
-import { buildSystemPrompt, buildUserContent } from "../services/llm/prompt";
+import { buildContextMessages } from "../services/llm/context";
 import type { ChatMessage } from "../services/llm";
 
 type AvatarStatus = "idle" | "processing" | "error";
@@ -31,6 +31,7 @@ function SidebarAppInner() {
     viewMode,
     activeConversation,
     turns,
+    captureImageData,
     startNewConversation,
     appendTurn,
     closeConversation,
@@ -38,6 +39,7 @@ function SidebarAppInner() {
     dismissHistory,
     loading: ctxLoading,
     setStreamingText,
+    setCaptureImageData,
   } = useConversationContext();
 
   useEffect(() => {
@@ -92,19 +94,16 @@ function SidebarAppInner() {
         const questionText = request.textQuestion ?? "请解释这张截图中的内容";
         await appendTurn("user", questionText, null, convId);
 
-        const systemPrompt = buildSystemPrompt(true, hasQuestion);
-        const userContent = buildUserContent(request.imageData, request.textQuestion);
-        const historyMessages: ChatMessage[] = turns
-          .filter((t) => t.role !== "system" && t.content)
-          .map((t) => ({
-            role: t.role as "user" | "assistant",
-            content: t.content,
-          }));
-        const messages: ChatMessage[] = [
-          { role: "system", content: systemPrompt },
-          ...historyMessages,
-          { role: "user", content: userContent },
-        ];
+        setCaptureImageData(request.imageData);
+
+        const messages = buildContextMessages({
+          turns,
+          captureImageData: request.imageData,
+          userText: questionText,
+          hasNewImage: true,
+          hasImage: true,
+          hasQuestion,
+        });
 
         await streamAndSave(messages, convId);
 
@@ -115,7 +114,7 @@ function SidebarAppInner() {
         setStatus("error");
       }
     },
-    [activeConversation, startNewConversation, appendTurn, turns, setStreamingText, streamAndSave],
+    [activeConversation, startNewConversation, appendTurn, turns, setStreamingText, setCaptureImageData, streamAndSave],
   );
 
   const handleCancel = useCallback(() => {
@@ -133,18 +132,14 @@ function SidebarAppInner() {
       try {
         await appendTurn("user", text);
 
-        const systemPrompt = buildSystemPrompt(false, true);
-        const historyMessages: ChatMessage[] = turns
-          .filter((t) => t.role !== "system" && t.content)
-          .map((t) => ({
-            role: t.role as "user" | "assistant",
-            content: t.content,
-          }));
-        const messages: ChatMessage[] = [
-          { role: "system", content: systemPrompt },
-          ...historyMessages,
-          { role: "user", content: text },
-        ];
+        const messages = buildContextMessages({
+          turns,
+          captureImageData,
+          userText: text,
+          hasNewImage: false,
+          hasImage: !!captureImageData,
+          hasQuestion: true,
+        });
 
         await streamAndSave(messages);
 
@@ -154,7 +149,7 @@ function SidebarAppInner() {
         setStatus("error");
       }
     },
-    [appendTurn, turns, setStreamingText, streamAndSave],
+    [appendTurn, turns, captureImageData, setStreamingText, streamAndSave],
   );
 
   const showCapture = captureImage && viewMode !== "history";
