@@ -34,7 +34,7 @@ interface ConversationState {
   viewMode: ViewMode;
   loading: boolean;
   streamingText: string;
-  captureImageData: string | null;
+  threadImageData: string | null;
 }
 
 interface ConversationActions {
@@ -51,7 +51,7 @@ interface ConversationActions {
   showHistory: () => void;
   dismissHistory: () => void;
   setStreamingText: (text: string) => void;
-  setCaptureImageData: (data: string | null) => void;
+  setThreadImageData: (data: string | null) => void;
 }
 
 type ConversationContextValue = ConversationState & ConversationActions;
@@ -81,7 +81,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     viewMode: "empty",
     loading: false,
     streamingText: "",
-    captureImageData: null,
+    threadImageData: null,
   });
 
   useEffect(() => {
@@ -92,7 +92,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
         viewMode: "empty",
         loading: false,
         streamingText: "",
-        captureImageData: null,
+        threadImageData: null,
       });
     }
 
@@ -113,7 +113,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
           viewMode: "chat",
           loading: false,
           streamingText: "",
-          captureImageData: null,
+          threadImageData: null,
         });
         return meta;
       } catch (err) {
@@ -135,7 +135,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
           viewMode: "chat",
           loading: false,
           streamingText: "",
-          captureImageData: null,
+          threadImageData: null,
         });
       } catch (err) {
         setState((prev) => ({ ...prev, loading: false }));
@@ -180,7 +180,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
       viewMode: "empty",
       loading: false,
       streamingText: "",
-      captureImageData: null,
+      threadImageData: null,
     });
   }, []);
 
@@ -194,7 +194,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
           viewMode: "empty",
           loading: false,
           streamingText: "",
-          captureImageData: null,
+          threadImageData: null,
         });
       }
     },
@@ -216,8 +216,8 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     setState((prev) => ({ ...prev, streamingText: text }));
   }, []);
 
-  const setCaptureImageData = useCallback((data: string | null) => {
-    setState((prev) => ({ ...prev, captureImageData: data }));
+  const setThreadImageData = useCallback((data: string | null) => {
+    setState((prev) => ({ ...prev, threadImageData: data }));
   }, []);
 
   const value: ConversationContextValue = {
@@ -230,7 +230,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     showHistory,
     dismissHistory,
     setStreamingText,
-    setCaptureImageData,
+    setThreadImageData,
   };
 
   return (

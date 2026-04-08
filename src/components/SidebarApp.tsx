@@ -24,14 +24,14 @@ const STATUS_CONFIG: Record<AvatarStatus, { label: string; color: string }> = {
 
 function SidebarAppInner() {
   const [status, setStatus] = useState<AvatarStatus>("idle");
-  const [captureImage, setCaptureImage] = useState<string | null>(null);
+  const [pendingCaptureImage, setPendingCaptureImage] = useState<string | null>(null);
   const config = STATUS_CONFIG[status];
 
   const {
     viewMode,
     activeConversation,
     turns,
-    captureImageData,
+    threadImageData,
     startNewConversation,
     appendTurn,
     closeConversation,
@@ -39,12 +39,12 @@ function SidebarAppInner() {
     dismissHistory,
     loading: ctxLoading,
     setStreamingText,
-    setCaptureImageData,
+    setThreadImageData,
   } = useConversationContext();
 
   useEffect(() => {
     const unlisten = listen<string>("capture-selected", (event) => {
-      setCaptureImage(event.payload);
+      setPendingCaptureImage(event.payload);
     });
     return () => {
       unlisten.then((fn) => fn());
@@ -53,7 +53,7 @@ function SidebarAppInner() {
 
   async function handleClose() {
     closeConversation();
-    setCaptureImage(null);
+    setPendingCaptureImage(null);
     await getCurrentWebviewWindow().hide();
   }
 
@@ -94,7 +94,7 @@ function SidebarAppInner() {
         const questionText = request.textQuestion ?? "请解释这张截图中的内容";
         await appendTurn("user", questionText, null, convId);
 
-        setCaptureImageData(request.imageData);
+        setThreadImageData(request.imageData);
 
         const messages = buildContextMessages({
           turns,
@@ -107,22 +107,22 @@ function SidebarAppInner() {
 
         await streamAndSave(messages, convId);
 
-        setCaptureImage(null);
+        setPendingCaptureImage(null);
         setStatus("idle");
       } catch {
         setStreamingText("");
         setStatus("error");
       }
     },
-    [activeConversation, startNewConversation, appendTurn, turns, setStreamingText, setCaptureImageData, streamAndSave],
+    [activeConversation, startNewConversation, appendTurn, turns, setStreamingText, setThreadImageData, streamAndSave],
   );
 
   const handleCancel = useCallback(() => {
-    setCaptureImage(null);
+    setPendingCaptureImage(null);
   }, []);
 
   const handleRecapture = useCallback(() => {
-    setCaptureImage(null);
+    setPendingCaptureImage(null);
     invoke("capture_cancel").catch(() => {});
   }, []);
 
@@ -134,10 +134,10 @@ function SidebarAppInner() {
 
         const messages = buildContextMessages({
           turns,
-          captureImageData,
+          captureImageData: threadImageData,
           userText: text,
           hasNewImage: false,
-          hasImage: !!captureImageData,
+          hasImage: !!threadImageData,
           hasQuestion: true,
         });
 
@@ -149,10 +149,10 @@ function SidebarAppInner() {
         setStatus("error");
       }
     },
-    [appendTurn, turns, captureImageData, setStreamingText, streamAndSave],
+    [appendTurn, turns, threadImageData, setStreamingText, streamAndSave],
   );
 
-  const showCapture = captureImage && viewMode !== "history";
+  const showCapture = pendingCaptureImage && viewMode !== "history";
 
   return (
     <div className="sidebar">
@@ -213,7 +213,7 @@ function SidebarAppInner() {
       <main className="sidebar-body">
         {showCapture ? (
           <CaptureConfirm
-            imageData={captureImage}
+            imageData={pendingCaptureImage}
             onSubmit={handleSubmit}
             onCancel={handleCancel}
             onRecapture={handleRecapture}

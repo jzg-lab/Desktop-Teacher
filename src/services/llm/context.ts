@@ -34,9 +34,8 @@ function estimateChars(msg: ChatMessage): number {
   if (typeof msg.content === "string") {
     return msg.content.length;
   }
-  // MessageContent 数组
-  return (msg.content as Array<{ type: string; text?: string }>).reduce(
-    (sum, part) => sum + (part.type === "text" && part.text ? part.text.length : 0),
+  return msg.content.reduce(
+    (sum, part) => sum + (part.type === "text" ? part.text.length : 0),
     0,
   );
 }
@@ -55,7 +54,7 @@ function totalChars(messages: ChatMessage[]): number {
  */
 export function turnsToMessages(
   turns: Turn[],
-  captureImageData: string | null,
+  threadImageData: string | null,
 ): ChatMessage[] {
   const nonSystemTurns = turns.filter((t) => t.role !== "system" && t.content);
   if (nonSystemTurns.length === 0) return [];
@@ -65,8 +64,8 @@ export function turnsToMessages(
 
   for (const turn of nonSystemTurns) {
     if (turn.role === "user" && !firstUserTurnHandled) {
-      if (captureImageData) {
-        const userContent = buildUserContent(captureImageData, turn.content);
+      if (threadImageData) {
+        const userContent = buildUserContent(threadImageData, turn.content);
         messages.push({ role: "user", content: userContent });
       } else {
         messages.push({ role: "user", content: turn.content });
@@ -142,7 +141,7 @@ export function truncateMessages(messages: ChatMessage[]): ChatMessage[] {
 export interface BuildContextOptions {
   /** 已有的 Turn 列表（不含即将追加的新消息） */
   turns: Turn[];
-  /** 当前会话关联的截图 base64（可为 null 表示纯文本追问） */
+  /** 当前线程关联的截图 base64（可为 null 表示纯文本追问） */
   captureImageData: string | null;
   /** 本次用户输入 */
   userText: string;

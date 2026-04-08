@@ -1,3 +1,5 @@
+import type { MessageContent, TextContent, ImageContent } from "./types";
+
 // 老师式回答系统指令 (SRS FR-033: 这是什么/为什么重要/如何理解)
 
 /** @param hasImage 是否包含截图 @param hasQuestion 用户是否输入了文本问题 */
@@ -47,25 +49,16 @@ export function buildSystemPrompt(hasImage: boolean, hasQuestion: boolean): stri
 export function buildUserContent(
   imageData: string | null,
   textQuestion?: string,
-): Array<
-  { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
-> {
-  const parts: Array<
-    { type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }
-  > = [];
-
-  if (imageData) {
-    parts.push({
-      type: "image_url",
-      image_url: { url: `data:image/png;base64,${imageData}` },
-    });
+): MessageContent {
+  if (!imageData) {
+    return textQuestion ?? "请解释这张截图中的内容";
   }
 
-  if (textQuestion) {
-    parts.push({ type: "text", text: textQuestion });
-  } else if (imageData) {
-    parts.push({ type: "text", text: "请解释这张截图中的内容" });
-  }
+  const parts: Array<TextContent | ImageContent> = [
+    { type: "image_url", image_url: { url: `data:image/png;base64,${imageData}` } },
+  ];
+
+  parts.push({ type: "text", text: textQuestion || "请解释这张截图中的内容" });
 
   return parts;
 }
