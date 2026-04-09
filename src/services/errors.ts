@@ -16,11 +16,7 @@ export interface ClassifiedError {
   originalError: unknown;
 }
 
-const NETWORK_MESSAGES: Record<string, string> = {
-  Failed_to_fetch: "无法连接到服务器，请检查网络连接",
-  NetworkError: "网络错误，请检查网络设置",
-  TypeError_Failed_to_fetch: "无法连接到服务器，请检查网络连接",
-};
+const NETWORK_USER_MESSAGE = "无法连接到服务器，请检查网络连接";
 
 const PROVIDER_MESSAGES: Record<string, string> = {
   HTTP_401: "API Key 无效，请在设置中检查您的密钥",
@@ -31,20 +27,35 @@ const PROVIDER_MESSAGES: Record<string, string> = {
   HTTP_503: "服务暂时不可用，请稍后重试",
 };
 
-function isNetworkError(err: unknown): boolean {
+function isNetworkLikeError(err: unknown): boolean {
   if (err instanceof TypeError && (err.message === "Failed to fetch" || err.message.includes("NetworkError"))) {
-    return true;
-  }
-  if (err instanceof SkillError && (err.message.includes("Failed to fetch") || err.message.includes("NetworkError"))) {
     return true;
   }
   if (err instanceof LLMProviderError && (err.message.includes("Failed to fetch") || err.message.includes("NetworkError"))) {
     return true;
   }
+  if (err instanceof SkillError && (err.message.includes("Failed to fetch") || err.message.includes("NetworkError"))) {
+    return true;
+  }
+  if (err instanceof Error) {
+    const msg = err.message ?? "";
+    return msg.includes("fetch") || msg.includes("network") || msg.includes("NetworkError") || msg.includes("ERR_INTERNET");
+  }
   return false;
 }
 
 export function classifyError(err: unknown): ClassifiedError {
+  // Network errors — checked first so LLMProviderError/SkillError wrapping fetch failures still resolve as network
+  if (isNetworkLikeError(err)) {
+    logNetworkStatus({ online: false, message: String(err) });
+    return {
+      kind: "network",
+      userMessage: NETWORK_USER_MESSAGE,
+      retryable: true,
+      originalError: err,
+    };
+  }
+
   if (err instanceof LLMProviderError) {
     const userMessage = PROVIDER_MESSAGES[err.code]
       ?? (err.retryable ? "请求暂时失败，请稍后重试" : `请求失败（${err.code}）`);
@@ -75,31 +86,6 @@ export function classifyError(err: unknown): ClassifiedError {
       retryable: err.retryable,
       originalError: err,
     };
-  }
-
-  if (isNetworkError(err)) {
-    logNetworkStatus({ online: false, message: String(err) });
-    const key = err instanceof TypeError ? `TypeError_${err.message}` : "Failed_to_fetch";
-    const userMessage = NETWORK_MESSAGES[key] ?? NETWORK_MESSAGES.Failed_to_fetch;
-    return {
-      kind: "network",
-      userMessage,
-      retryable: true,
-      originalError: err,
-    };
-  }
-
-  if (err instanceof Error) {
-    const msg = err.message ?? "";
-    if (msg.includes("fetch") || msg.includes("network") || msg.includes("NetworkError") || msg.includes("ERR_INTERNET")) {
-      logNetworkStatus({ online: false, message: msg });
-      return {
-        kind: "network",
-        userMessage: NETWORK_MESSAGES.Failed_to_fetch,
-        retryable: true,
-        originalError: err,
-      };
-    }
   }
 
   logError("system", "未分类错误", { error: String(err) });

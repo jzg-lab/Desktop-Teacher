@@ -68,6 +68,18 @@ interface ConversationActions {
 
 type ConversationContextValue = ConversationState & ConversationActions;
 
+const INITIAL_STATE: ConversationState = {
+  activeConversation: null,
+  turns: [],
+  viewMode: "empty",
+  loading: false,
+  streamingText: "",
+  threadImageData: null,
+  skillCallInfo: null,
+  sources: [],
+  lastError: null,
+};
+
 const ConversationContext = createContext<ConversationContextValue | null>(
   null,
 );
@@ -87,31 +99,11 @@ interface ConversationProviderProps {
 }
 
 export function ConversationProvider({ children }: ConversationProviderProps) {
-  const [state, setState] = useState<ConversationState>({
-    activeConversation: null,
-    turns: [],
-    viewMode: "empty",
-    loading: false,
-    streamingText: "",
-    threadImageData: null,
-    skillCallInfo: null,
-    sources: [],
-    lastError: null,
-  });
+  const [state, setState] = useState<ConversationState>(INITIAL_STATE);
 
   useEffect(() => {
     function handleBeforeUnload() {
-      setState({
-        activeConversation: null,
-        turns: [],
-        viewMode: "empty",
-        loading: false,
-        streamingText: "",
-        threadImageData: null,
-        skillCallInfo: null,
-        sources: [],
-        lastError: null,
-      });
+      setState(INITIAL_STATE);
     }
 
     window.addEventListener("beforeunload", handleBeforeUnload);
@@ -126,14 +118,9 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
       try {
         const meta = await createConversation(title ?? "新会话");
         setState({
+          ...INITIAL_STATE,
           activeConversation: meta,
-          turns: [],
           viewMode: "chat",
-          loading: false,
-          streamingText: "",
-          threadImageData: null,
-          skillCallInfo: null,
-          sources: [],
         });
         return meta;
       } catch (err) {
@@ -150,14 +137,10 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
       try {
         const turns = await loadTurns(meta.id);
         setState({
+          ...INITIAL_STATE,
           activeConversation: meta,
           turns,
           viewMode: "chat",
-          loading: false,
-          streamingText: "",
-          threadImageData: null,
-          skillCallInfo: null,
-          sources: [],
         });
       } catch (err) {
         setState((prev) => ({ ...prev, loading: false }));
@@ -201,34 +184,14 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
   );
 
   const closeConversation = useCallback(() => {
-    setState({
-      activeConversation: null,
-      turns: [],
-      viewMode: "empty",
-      loading: false,
-      streamingText: "",
-      threadImageData: null,
-      skillCallInfo: null,
-      sources: [],
-      lastError: null,
-    });
+    setState(INITIAL_STATE);
   }, []);
 
   const removeConversation = useCallback(
     async (id: string): Promise<void> => {
       await storageDeleteConversation(id);
       if (state.activeConversation?.id === id) {
-        setState({
-          activeConversation: null,
-          turns: [],
-          viewMode: "empty",
-          loading: false,
-          streamingText: "",
-          threadImageData: null,
-          skillCallInfo: null,
-          sources: [],
-          lastError: null,
-        });
+        setState(INITIAL_STATE);
       }
     },
     [state.activeConversation],

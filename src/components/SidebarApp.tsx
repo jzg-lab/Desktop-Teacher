@@ -20,7 +20,7 @@ import type { SkillCallInfo } from "../services/skills/types";
 import type { SourceRef } from "../services/storage";
 import { classifyError, checkNetworkAvailability } from "../services/errors";
 import type { ClassifiedError } from "../services/errors";
-import { logError, logRequestDiagnostic } from "../services/logger";
+import { logRequestDiagnostic } from "../services/logger";
 
 type AvatarStatus = "idle" | "processing" | "searching" | "extracting" | "error";
 
@@ -66,6 +66,24 @@ function SidebarAppInner() {
     convId?: string;
     enableTools?: boolean;
   } | null>(null);
+
+  function handleNetworkCheck(): ClassifiedError | null {
+    if (checkNetworkAvailability()) return null;
+    const classified = classifyError(new TypeError("Failed to fetch"));
+    setLastError(classified);
+    setStatus("error");
+    return classified;
+  }
+
+  function handleSkillStatus(info: SkillCallInfo) {
+    if (info.status === "searching") {
+      setStatus("searching");
+    } else if (info.status === "extracting") {
+      setStatus("extracting");
+    } else if (info.status === "error") {
+      setStatus("error");
+    }
+  }
 
   useEffect(() => {
     const unlisten = listen<string>("capture-selected", (event) => {
@@ -152,13 +170,7 @@ function SidebarAppInner() {
       setStatus("processing");
       clearError();
 
-      if (!checkNetworkAvailability()) {
-        const classified = classifyError(new TypeError("Failed to fetch"));
-        setLastError(classified);
-        setStatus("error");
-        logError("network", "网络不可用，无法提交截图提问");
-        return;
-      }
+      if (handleNetworkCheck()) return;
 
       try {
         let convId = activeConversation?.id;
@@ -189,22 +201,13 @@ function SidebarAppInner() {
 
         lastRequestRef.current = { messages, convId, enableTools: forceSearch };
 
-        await streamAndSave(messages, convId, forceSearch, (info) => {
-          if (info.status === "searching") {
-            setStatus("searching");
-          } else if (info.status === "extracting") {
-            setStatus("extracting");
-          } else if (info.status === "error") {
-            setStatus("error");
-          }
-        });
+        await streamAndSave(messages, convId, forceSearch, handleSkillStatus);
 
         setPendingCaptureImage(null);
         setStatus("idle");
       } catch (err) {
         setStreamingText("");
-        const classified = classifyError(err);
-        setLastError(classified);
+        setLastError(classifyError(err));
         setStatus("error");
       }
     },
@@ -216,13 +219,7 @@ function SidebarAppInner() {
       setStatus("processing");
       clearError();
 
-      if (!checkNetworkAvailability()) {
-        const classified = classifyError(new TypeError("Failed to fetch"));
-        setLastError(classified);
-        setStatus("error");
-        logError("network", "网络不可用，无法发送消息");
-        return;
-      }
+      if (handleNetworkCheck()) return;
 
       try {
         await appendTurn("user", text);
@@ -245,21 +242,14 @@ function SidebarAppInner() {
 
         await streamAndSave(messages, undefined, shouldUseTools, (info) => {
           setSkillCallInfo(info);
-          if (info.status === "searching") {
-            setStatus("searching");
-          } else if (info.status === "extracting") {
-            setStatus("extracting");
-          } else if (info.status === "error") {
-            setStatus("error");
-          }
+          handleSkillStatus(info);
         });
 
         setStatus("idle");
         setForceSearch(false);
       } catch (err) {
         setStreamingText("");
-        const classified = classifyError(err);
-        setLastError(classified);
+        setLastError(classifyError(err));
         setStatus("error");
       }
     },
@@ -272,32 +262,20 @@ function SidebarAppInner() {
 
     setStatus("processing");
     clearError();
+    setSkillCallInfo(null);
+    setSources([]);
 
-    if (!checkNetworkAvailability()) {
-      const classified = classifyError(new TypeError("Failed to fetch"));
-      setLastError(classified);
-      setStatus("error");
-      return;
-    }
+    if (handleNetworkCheck()) return;
 
     try {
-      await streamAndSave(last.messages, last.convId, last.enableTools, (info) => {
-        if (info.status === "searching") {
-          setStatus("searching");
-        } else if (info.status === "extracting") {
-          setStatus("extracting");
-        } else if (info.status === "error") {
-          setStatus("error");
-        }
-      });
+      await streamAndSave(last.messages, last.convId, last.enableTools, handleSkillStatus);
       setStatus("idle");
     } catch (err) {
       setStreamingText("");
-      const classified = classifyError(err);
-      setLastError(classified);
+      setLastError(classifyError(err));
       setStatus("error");
     }
-  }, [clearError, setLastError]);
+  }, [clearError, setLastError, setSkillCallInfo, setSources]);
 
   const handleCancel = useCallback(() => {
     setPendingCaptureImage(null);

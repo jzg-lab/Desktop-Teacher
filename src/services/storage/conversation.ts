@@ -21,17 +21,11 @@ import type {
   Turn,
   ConversationIndex,
 } from "./types";
-import { logError, logInfo } from "../logger";
 
 // ---------- Index ----------
 
 export async function loadIndex(): Promise<ConversationIndex> {
-  try {
-    return await invoke<ConversationIndex>("storage_load_index");
-  } catch (err) {
-    logError("storage", "加载会话索引失败", { error: String(err) });
-    throw err;
-  }
+  return await invoke<ConversationIndex>("storage_load_index");
 }
 
 // ---------- Conversation ----------
@@ -44,14 +38,7 @@ export async function listConversations(): Promise<ConversationMeta[]> {
 export async function createConversation(
   title: string,
 ): Promise<ConversationMeta> {
-  try {
-    const meta = await invoke<ConversationMeta>("storage_create_conversation", { title });
-    logInfo("storage", "创建新会话", { id: meta.id });
-    return meta;
-  } catch (err) {
-    logError("storage", "创建会话失败", { title, error: String(err) });
-    throw err;
-  }
+  return await invoke<ConversationMeta>("storage_create_conversation", { title });
 }
 
 export async function getConversation(
@@ -68,13 +55,7 @@ export async function updateConversationTitle(
 }
 
 export async function deleteConversation(id: string): Promise<void> {
-  try {
-    await invoke("storage_delete_conversation", { id });
-    logInfo("storage", "删除会话", { id });
-  } catch (err) {
-    logError("storage", "删除会话失败", { id, error: String(err) });
-    throw err;
-  }
+  await invoke("storage_delete_conversation", { id });
 }
 
 // ---------- Turns ----------
@@ -87,17 +68,12 @@ export async function appendTurn(
   conversationId: string,
   turn: Omit<Turn, "id" | "conversation_id" | "created_at">,
 ): Promise<Turn> {
-  try {
-    return await invoke<Turn>("storage_append_turn", {
-      conversationId,
-      role: turn.role,
-      content: turn.content,
-      routeType: turn.route_type,
-      toolCalls: turn.tool_calls ?? null,
-      toolCallId: turn.tool_call_id ?? null,
-    });
-  } catch (err) {
-    logError("storage", "追加消息失败", { conversationId, error: String(err) });
-    throw err;
-  }
+  return await invoke<Turn>("storage_append_turn", {
+    conversationId,
+    role: turn.role,
+    content: turn.content,
+    routeType: turn.route_type,
+    toolCalls: turn.tool_calls ?? null,
+    toolCallId: turn.tool_call_id ?? null,
+  });
 }

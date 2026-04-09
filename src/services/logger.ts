@@ -52,10 +52,6 @@ function write(level: LogLevel, category: LogCategory, message: string, meta?: R
   }
 }
 
-export function logDebug(category: LogCategory, message: string, meta?: Record<string, unknown>): void {
-  write("debug", category, message, meta);
-}
-
 export function logInfo(category: LogCategory, message: string, meta?: Record<string, unknown>): void {
   write("info", category, message, meta);
 }

@@ -7,7 +7,7 @@
  */
 
 import type { SearchResponse, ExtractResponse } from "./types";
-import { logError, logSkillDiagnostic } from "../logger";
+import { logSkillDiagnostic } from "../logger";
 
 export class SkillError extends Error {
   readonly code: string;
@@ -48,7 +48,6 @@ export async function search(
   if (!res.ok) {
     const retryable = res.status === 429 || res.status >= 500;
     const text = await res.text().catch(() => "");
-    logError("skill", "Tavily search HTTP error", { status: res.status, retryable });
     throw new SkillError(
       `HTTP_${res.status}`,
       `Tavily search failed: ${res.status} ${text}`,
@@ -89,7 +88,6 @@ export async function extract(
   if (!res.ok) {
     const retryable = res.status === 429 || res.status >= 500;
     const text = await res.text().catch(() => "");
-    logError("skill", "Tavily extract HTTP error", { status: res.status, retryable });
     throw new SkillError(
       `HTTP_${res.status}`,
       `Tavily extract failed: ${res.status} ${text}`,
