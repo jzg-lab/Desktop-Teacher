@@ -19,7 +19,8 @@ import type { ProviderAdapter } from "./adapter";
 import { OpenAIAdapter, type OpenAIConfig } from "./openai";
 import { QwenAdapter, type QwenConfig } from "./qwen";
 import { executeToolCall } from "../skills/executor";
-import type { SourceRef } from "../skills/types";
+import type { SkillExecutionResult, SkillCallInfo } from "../skills/types";
+import type { SourceRef } from "../storage/types";
 
 export interface LLMClientConfig {
   defaultProvider: string;
@@ -28,12 +29,7 @@ export interface LLMClientConfig {
   tavilyApiKey?: string;
 }
 
-export type SkillStatusCallback = (status: {
-  type: "searching" | "extracting" | "done" | "error";
-  query?: string;
-  url?: string;
-  error?: string;
-}) => void;
+export type SkillStatusCallback = (status: SkillCallInfo) => void;
 
 export class UnifiedLLMClient {
   private readonly providers = new Map<string, ProviderAdapter>();
@@ -147,9 +143,9 @@ export class UnifiedLLMClient {
       for (const tc of toolCalls) {
         const fn = tc.function;
         if (fn.name === "web_search") {
-          onStatus?.({ type: "searching", query: JSON.parse(fn.arguments).query });
+          onStatus?.({ status: "searching", query: JSON.parse(fn.arguments).query });
         } else if (fn.name === "web_extract") {
-          onStatus?.({ type: "extracting", url: JSON.parse(fn.arguments).urls });
+          onStatus?.({ status: "extracting", url: JSON.parse(fn.arguments).urls });
         }
 
         const result = await executeToolCall(this.tavilyApiKey, fn);
@@ -160,8 +156,7 @@ export class UnifiedLLMClient {
           allSources.push(...result.sources);
         }
 
-        const resultContent = result.resultContent
-          ?? (result.success ? "工具调用成功" : `工具调用失败: ${result.error}`);
+        const resultContent = result.resultContent ?? (result.success ? "工具调用成功" : `工具调用失败: ${result.error}`);
 
         currentMessages.push({
           role: "tool",
@@ -206,4 +201,3 @@ export class UnifiedLLMClient {
   }
 }
 
-import type { SkillExecutionResult } from "../skills/types";

@@ -126,7 +126,7 @@ export interface ChatStreamChunk {
 // ---------- 路由元数据（SRS FR-048） ----------
 
 export type { RouteType } from "../storage/types";
-import type { RouteType } from "../storage/types";
+import type { RouteType, SourceRef } from "../storage/types";
 
 export interface RouteMetadata {
   route_type: RouteType;
@@ -141,12 +141,7 @@ export interface RouteMetadata {
 export interface ChatWithToolsResult {
   text: string;
   route: RouteMetadata;
-  sources: Array<{
-    id: string;
-    title: string;
-    url: string;
-    snippet: string;
-  }>;
+  sources: SourceRef[];
 }
 
 // ---------- 错误 ----------

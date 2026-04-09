@@ -1,4 +1,4 @@
-import type { MessageContent, TextContent, ImageContent, ToolDefinition, ChatRequest } from "./types";
+import type { MessageContent, TextContent, ImageContent, ToolDefinition } from "./types";
 
 import { ALLOWED_TOOLS } from "../skills/tools";
 
@@ -55,15 +55,8 @@ const searchCapability = `
   return base + withImage + noQuestion + searchCapability + followUp;
 }
 
-export function getSearchTools(forceSearch: boolean): ToolDefinition[] {
+export function getSearchTools(): ToolDefinition[] {
   return ALLOWED_TOOLS;
-}
-
-export function getToolChoice(forceSearch: boolean): ChatRequest["tool_choice"] {
-  if (forceSearch) {
-    return { type: "function", function: { name: "web_search" } };
-  }
-  return "auto";
 }
 
 /** @param imageData base64 图片数据（不含 data: 前缀） @param textQuestion 用户文本问题 */

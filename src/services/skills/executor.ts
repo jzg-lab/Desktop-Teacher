@@ -1,10 +1,19 @@
 import { search, extract, SkillError } from "./tavily";
-import type { SourceRef, SkillExecutionResult } from "./types";
+import type { SourceRef } from "../../storage/types";
+import type { SkillExecutionResult } from "./types";
 
 type ToolCallFunction = {
   name: string;
   arguments: string;
 };
+
+function fail(
+  routeType: "search" | "extraction",
+  error: string,
+  resultContent: string,
+): SkillExecutionResult {
+  return { routeType, sources: [], success: false, error, resultContent };
+}
 
 export function executeToolCall(
   apiKey: string,
@@ -16,12 +25,7 @@ export function executeToolCall(
   if (fn.name === "web_extract") {
     return executeExtract(apiKey, fn.arguments);
   }
-  return Promise.resolve({
-    routeType: "search",
-    sources: [],
-    success: false,
-    error: `Unknown tool: ${fn.name}`,
-  });
+  return Promise.resolve(fail("search", `Unknown tool: ${fn.name}`, `不支持的工具调用: ${fn.name}`));
 }
 
 async function executeSearch(
@@ -33,21 +37,11 @@ async function executeSearch(
     const parsed = JSON.parse(argsJson) as { query?: string };
     query = parsed.query ?? "";
   } catch {
-    return {
-      routeType: "search",
-      sources: [],
-      success: false,
-      error: "Invalid arguments for web_search",
-    };
+    return fail("search", "Invalid arguments for web_search", "搜索参数解析失败");
   }
 
   if (!query.trim()) {
-    return {
-      routeType: "search",
-      sources: [],
-      success: false,
-      error: "Empty search query",
-    };
+    return fail("search", "Empty search query", "搜索关键词为空");
   }
 
   try {
@@ -68,12 +62,7 @@ async function executeSearch(
     };
   } catch (err) {
     const message = err instanceof SkillError ? err.message : String(err);
-    return {
-      routeType: "search",
-      sources: [],
-      success: false,
-      error: message,
-    };
+    return fail("search", message, `搜索失败: ${message}`);
   }
 }
 
@@ -86,21 +75,11 @@ async function executeExtract(
     const parsed = JSON.parse(argsJson) as { urls?: string };
     urls = (parsed.urls ?? "").split(",").map((u) => u.trim()).filter(Boolean);
   } catch {
-    return {
-      routeType: "extraction",
-      sources: [],
-      success: false,
-      error: "Invalid arguments for web_extract",
-    };
+    return fail("extraction", "Invalid arguments for web_extract", "提取参数解析失败");
   }
 
   if (urls.length === 0) {
-    return {
-      routeType: "extraction",
-      sources: [],
-      success: false,
-      error: "No URLs provided",
-    };
+    return fail("extraction", "No URLs provided", "未提供有效的网页 URL");
   }
 
   try {
@@ -121,12 +100,7 @@ async function executeExtract(
     };
   } catch (err) {
     const message = err instanceof SkillError ? err.message : String(err);
-    return {
-      routeType: "extraction",
-      sources: [],
-      success: false,
-      error: message,
-    };
+    return fail("extraction", message, `网页提取失败: ${message}`);
   }
 }
 

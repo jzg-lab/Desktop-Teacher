@@ -3,28 +3,10 @@
  *
  * V0 仅允许两个工具：联网搜索和网页来源提取。
  * 这些定义直接传给 LLM API 的 tools 参数。
+ * 类型复用 llm/types.ts 中的 ToolDefinition，消除重复定义。
  */
 
-import type { ChatRequest } from "../llm/types";
-
-export interface ToolFunction {
-  name: string;
-  description: string;
-  parameters: {
-    type: "object";
-    properties: Record<string, {
-      type: string;
-      description: string;
-      enum?: string[];
-    }>;
-    required: string[];
-  };
-}
-
-export interface ToolDefinition {
-  type: "function";
-  function: ToolFunction;
-}
+import type { ToolDefinition } from "../llm/types";
 
 export const WEB_SEARCH_TOOL: ToolDefinition = {
   type: "function",
@@ -65,15 +47,3 @@ export const WEB_EXTRACT_TOOL: ToolDefinition = {
 };
 
 export const ALLOWED_TOOLS: ToolDefinition[] = [WEB_SEARCH_TOOL, WEB_EXTRACT_TOOL];
-
-export function buildToolsParameter(forceSearch?: boolean): ChatRequest {
-  const toolChoice: ChatRequest["tool_choice"] = forceSearch
-    ? { type: "function", function: { name: "web_search" } }
-    : "auto";
-
-  return {
-    messages: [],
-    tools: ALLOWED_TOOLS,
-    tool_choice: toolChoice,
-  };
-}

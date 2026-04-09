@@ -2,8 +2,10 @@
  * Skill 层类型定义
  *
  * 定义搜索 skill 和来源提取 skill 的输入输出类型，
- * 以及工具调用状态和来源引用类型。
+ * 以及工具调用状态。来源引用类型统一使用 storage 层定义。
  */
+
+import type { SourceRef } from "../../storage/types";
 
 // ---------- 搜索结果 ----------
 
@@ -41,19 +43,6 @@ export interface ExtractResponse {
   results: ExtractedPage[];
   /** 提取失败的页面 */
   failed: Array<{ url: string; error: string }>;
-}
-
-// ---------- 来源引用（用于回答中展示） ----------
-
-export interface SourceRef {
-  /** 唯一标识 */
-  id: string;
-  /** 来源标题 */
-  title: string;
-  /** 来源 URL */
-  url: string;
-  /** 摘要片段 */
-  snippet: string;
 }
 
 // ---------- 工具调用状态（UI 展示用） ----------

@@ -81,17 +81,8 @@ function SidebarAppInner() {
 
     if (enableTools && client.tavilyApiKey) {
       const result = await client.chatWithTools(
-        { messages, tools: getSearchTools(forceSearch) },
-        {
-          type(status) {
-            onSkillStatus?.({
-              status: status.type === "searching" ? "searching" : status.type === "extracting" ? "extracting" : status.type === "error" ? "error" : "idle",
-              query: status.query,
-              url: status.url,
-              error: status.error,
-            });
-          },
-        },
+        { messages, tools: getSearchTools() },
+        onSkillStatus,
       );
 
       fullText = result.text;

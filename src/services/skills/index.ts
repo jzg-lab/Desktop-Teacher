@@ -3,7 +3,6 @@ export type {
   SearchResponse,
   ExtractedPage,
   ExtractResponse,
-  SourceRef,
   SkillStatus,
   SkillCallInfo,
   SkillExecutionResult,
@@ -19,7 +18,6 @@ export {
   WEB_SEARCH_TOOL,
   WEB_EXTRACT_TOOL,
   ALLOWED_TOOLS,
-  buildToolsParameter,
 } from "./tools";
 
 export { executeToolCall } from "./executor";
