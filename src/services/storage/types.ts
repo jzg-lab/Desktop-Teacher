@@ -13,7 +13,7 @@ export interface ConversationMeta {
   status: "active" | "archived";
 }
 
-export type Role = "system" | "user" | "assistant";
+export type Role = "system" | "user" | "assistant" | "tool";
 
 export type RouteType = "direct" | "search" | "extraction";
 
@@ -24,6 +24,15 @@ export interface Turn {
   content: string;
   route_type: RouteType | null;
   created_at: string;
+  tool_calls?: unknown;
+  tool_call_id?: string;
+}
+
+export interface SourceRef {
+  id: string;
+  title: string;
+  url: string;
+  snippet: string;
 }
 
 export interface ConversationIndex {

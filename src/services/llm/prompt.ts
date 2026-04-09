@@ -1,4 +1,6 @@
-import type { MessageContent, TextContent, ImageContent } from "./types";
+import type { MessageContent, TextContent, ImageContent, ToolDefinition, ChatRequest } from "./types";
+
+import { ALLOWED_TOOLS } from "../skills/tools";
 
 // 老师式回答系统指令 (SRS FR-033: 这是什么/为什么重要/如何理解)
 
@@ -33,16 +35,35 @@ export function buildSystemPrompt(hasImage: boolean, hasQuestion: boolean): stri
 3. **如何理解**：给出理解该内容的方法或下一步建议`
     : "";
 
+const searchCapability = `
+关于联网搜索能力：
+- 你可以使用 web_search 工具搜索互联网上的最新信息
+- 你可以使用 web_extract 工具提取网页内容
+- 当用户要求"搜索"、"查资料"、"最新信息"、"新闻"、"查一下"时，应主动调用 web_search
+- 当你需要实时数据、最新事件、或不确定的信息时，也应调用搜索
+- 搜索后必须在回答中附带来源链接
+- 如果用户没有要求搜索且你有信心直接回答，不要滥用搜索`;
+
   const followUp = !hasImage
     ? `
-
 关于追问：
 - 你可以引用之前对话中讨论过的内容
 - 如果用户追问的内容与之前截图有关，结合之前的分析继续回答
 - 保持回答的连贯性，不要重复已经解释过的内容`
     : "";
 
-  return base + withImage + noQuestion + followUp;
+  return base + withImage + noQuestion + searchCapability + followUp;
+}
+
+export function getSearchTools(forceSearch: boolean): ToolDefinition[] {
+  return ALLOWED_TOOLS;
+}
+
+export function getToolChoice(forceSearch: boolean): ChatRequest["tool_choice"] {
+  if (forceSearch) {
+    return { type: "function", function: { name: "web_search" } };
+  }
+  return "auto";
 }
 
 /** @param imageData base64 图片数据（不含 data: 前缀） @param textQuestion 用户文本问题 */

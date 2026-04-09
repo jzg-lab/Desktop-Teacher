@@ -14,13 +14,18 @@ import { SettingsProvider } from "../hooks/SettingsContext";
 import type { CaptureRequest } from "../types/capture";
 import { getLLMClient } from "../services/llm";
 import { buildContextMessages } from "../services/llm/context";
-import type { ChatMessage } from "../services/llm";
+import { getSearchTools } from "../services/llm/prompt";
+import type { ChatMessage, RouteType } from "../services/llm";
+import type { SkillCallInfo } from "../services/skills/types";
+import type { SourceRef } from "../services/storage";
 
-type AvatarStatus = "idle" | "processing" | "error";
+type AvatarStatus = "idle" | "processing" | "searching" | "extracting" | "error";
 
 const STATUS_CONFIG: Record<AvatarStatus, { label: string; color: string }> = {
   idle: { label: "就绪", color: "#34d399" },
   processing: { label: "思考中...", color: "#fbbf24" },
+  searching: { label: "搜索中...", color: "#60a5fa" },
+  extracting: { label: "提取中...", color: "#a78bfa" },
   error: { label: "出错了", color: "#f87171" },
 };
 
@@ -28,6 +33,7 @@ function SidebarAppInner() {
   const [status, setStatus] = useState<AvatarStatus>("idle");
   const [pendingCaptureImage, setPendingCaptureImage] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [forceSearch, setForceSearch] = useState(false);
   const config = STATUS_CONFIG[status];
 
   const {
@@ -43,6 +49,10 @@ function SidebarAppInner() {
     loading: ctxLoading,
     setStreamingText,
     setThreadImageData,
+    setSkillCallInfo,
+    setSources,
+    sources,
+    skillCallInfo,
   } = useConversationContext();
 
   useEffect(() => {
@@ -63,19 +73,51 @@ function SidebarAppInner() {
   async function streamAndSave(
     messages: ChatMessage[],
     convId?: string,
-  ): Promise<void> {
+    enableTools?: boolean,
+    onSkillStatus?: (info: SkillCallInfo) => void,
+  ): Promise<string> {
     let fullText = "";
-    setStreamingText("");
     const client = getLLMClient();
 
-    for await (const chunk of client.chatStream({ messages })) {
-      const delta = chunk.choices?.[0]?.delta?.content ?? "";
-      fullText += delta;
-      setStreamingText(fullText);
+    if (enableTools && client.tavilyApiKey) {
+      const result = await client.chatWithTools(
+        { messages, tools: getSearchTools(forceSearch) },
+        {
+          type(status) {
+            onSkillStatus?.({
+              status: status.type === "searching" ? "searching" : status.type === "extracting" ? "extracting" : status.type === "error" ? "error" : "idle",
+              query: status.query,
+              url: status.url,
+              error: status.error,
+            });
+          },
+        },
+      );
+
+      fullText = result.text;
+
+      if (result.sources.length > 0) {
+        setSources(result.sources);
+      }
+
+      const routeType = result.route.route_type as RouteType;
+      await appendTurn("assistant", fullText, routeType, convId);
+
+      for (const source of result.sources) {
+        await appendTurn("assistant", `[${source.title}](${source.url})`, routeType, convId);
+      }
+    } else {
+      setStreamingText("");
+      for await (const chunk of client.chatStream({ messages })) {
+        const delta = chunk.choices?.[0]?.delta?.content ?? "";
+        fullText += delta;
+        setStreamingText(fullText);
+      }
+      setStreamingText("");
+      await appendTurn("assistant", fullText, "direct", convId);
     }
 
-    setStreamingText("");
-    await appendTurn("assistant", fullText, "direct", convId);
+    return fullText;
   }
 
   const handleSubmit = useCallback(
@@ -108,7 +150,15 @@ function SidebarAppInner() {
           hasQuestion,
         });
 
-        await streamAndSave(messages, convId);
+        await streamAndSave(messages, convId, forceSearch, (info) => {
+          if (info.status === "searching") {
+            setStatus("searching");
+          } else if (info.status === "extracting") {
+            setStatus("extracting");
+          } else if (info.status === "error") {
+            setStatus("error");
+          }
+        });
 
         setPendingCaptureImage(null);
         setStatus("idle");
@@ -117,7 +167,7 @@ function SidebarAppInner() {
         setStatus("error");
       }
     },
-    [activeConversation, startNewConversation, appendTurn, turns, setStreamingText, setThreadImageData, streamAndSave],
+    [activeConversation, startNewConversation, appendTurn, turns, setStreamingText, setThreadImageData, setSources, forceSearch],
   );
 
   const handleCancel = useCallback(() => {
@@ -130,10 +180,13 @@ function SidebarAppInner() {
   }, []);
 
   const handleChatSend = useCallback(
-    async (text: string) => {
+    async (text: string, searchMode?: boolean) => {
       setStatus("processing");
       try {
         await appendTurn("user", text);
+
+        setSkillCallInfo(null);
+        setSources([]);
 
         const messages = buildContextMessages({
           turns,
@@ -144,15 +197,27 @@ function SidebarAppInner() {
           hasQuestion: true,
         });
 
-        await streamAndSave(messages);
+        const shouldUseTools = searchMode || forceSearch;
+
+        await streamAndSave(messages, undefined, shouldUseTools, (info) => {
+          setSkillCallInfo(info);
+          if (info.status === "searching") {
+            setStatus("searching");
+          } else if (info.status === "extracting") {
+            setStatus("extracting");
+          } else if (info.status === "error") {
+            setStatus("error");
+          }
+        });
 
         setStatus("idle");
+        setForceSearch(false);
       } catch {
         setStreamingText("");
         setStatus("error");
       }
     },
-    [appendTurn, turns, threadImageData, setStreamingText, streamAndSave],
+    [appendTurn, turns, threadImageData, setStreamingText, setSources, setSkillCallInfo, forceSearch],
   );
 
   const showCapture = pendingCaptureImage && viewMode !== "history";
@@ -172,6 +237,18 @@ function SidebarAppInner() {
         </div>
 
         <div className="header-actions">
+          <button
+            className="header-btn"
+            title={forceSearch ? "关闭搜索模式" : "搜索模式"}
+            aria-label={forceSearch ? "关闭搜索模式" : "搜索模式"}
+            onClick={() => setForceSearch((prev) => !prev)}
+            style={forceSearch ? { color: "#60a5fa" } : undefined}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <circle cx="6" cy="6" r="4" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M9 9L13 13" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+            </svg>
+          </button>
           <button
             className="header-btn"
             onClick={() => setShowSettings(true)}
@@ -240,7 +317,7 @@ function SidebarAppInner() {
         ) : viewMode === "history" ? (
           <HistoryList onBack={dismissHistory} />
         ) : viewMode === "chat" ? (
-          <ChatView onSend={handleChatSend} loading={ctxLoading} />
+          <ChatView onSend={handleChatSend} loading={ctxLoading} sources={sources} skillCallInfo={skillCallInfo} />
         ) : (
           <div className="empty-state">
             <div className="empty-icon">

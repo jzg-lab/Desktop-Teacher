@@ -10,6 +10,7 @@
 | 前端 | React 19 + TypeScript + Vite |
 | LLM 接入 | 统一 OpenAI-compatible 适配层 |
 | Provider | OpenAI / Qwen (DashScope) |
+| 联网搜索 | Tavily Search + Extract API |
 | 本地存储 | 文件制 + 轻量索引 |
 
 ## 项目结构
@@ -17,10 +18,11 @@
 ```
 src/
   services/
-    llm/          # Provider 适配层 (types, adapter, openai, qwen, client, init, prompt)
+    llm/          # Provider 适配层 (types, adapter, openai, qwen, client, init, prompt, context)
+    skills/       # 联网搜索 + 来源提取 (types, tavily, tools, executor)
     storage/      # 本地会话存储 (types, conversation)
     settings/     # 应用设置 (types, load/save via Tauri)
-  components/     # React 组件 (SidebarApp, CaptureOverlay, CaptureConfirm, SettingsModal)
+  components/     # React 组件 (SidebarApp, CaptureOverlay, CaptureConfirm, SettingsModal, ChatView, HistoryList)
   hooks/          # React hooks (ConversationContext, SettingsContext)
 src-tauri/         # Tauri Rust 后端
   src/
@@ -62,6 +64,7 @@ docs/              # 产品文档
 | step-03 本地会话与归档 | Done |
 | step-04 模型适配与回答 | Done |
 | step-05 多轮追问与上下文保持 | Done |
+| step-06 搜索 Skill 与路由控制 | Done |
 
 ## 开发
 
@@ -96,9 +99,12 @@ VITE_OPENAI_API_KEY=sk-your-openai-key
 
 # Qwen / DashScope（可选，两个配一个即可）
 VITE_QWEN_API_KEY=sk-your-dashscope-key
+
+# Tavily 联网搜索（可选，配置后启用搜索和网页提取功能）
+VITE_TAVILY_API_KEY=tvly-your-tavily-key
 ```
 
-UI 配置优先于环境变量。详细配置项见 `.env.example` 和 `docs/architecture.md` §5.3。
+UI 配置优先于环境变量。详细配置项见 `.env.example` 和 `docs/architecture.md` §5.4。
 
 ### 3. 启动开发服务器
 

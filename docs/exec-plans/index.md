@@ -38,12 +38,12 @@
 4. ~~step-03-local-conversations-and-archive.md~~ ✓
 5. ~~step-04-model-adapter-and-answering.md~~ ✓
 6. ~~step-05-follow-up-chat.md~~ ✓
-7. [step-06-search-skills-and-routing.md](step-06-search-skills-and-routing.md)
+7. ~~step-06-search-skills-and-routing.md~~ ✓
 8. [step-07-errors-and-observability.md](step-07-errors-and-observability.md)
 9. [step-08-polish-and-release.md](step-08-polish-and-release.md)
 
 ## 当前下一步
 
-- [step-06-search-skills-and-routing.md](step-06-search-skills-and-routing.md)
+- [step-07-errors-and-observability.md](step-07-errors-and-observability.md)
 
-Step-00 ~ Step-05 已完成，下一步需要实现搜索 Skill 与路由策略。
+Step-00 ~ Step-06 已完成，下一步需要实现错误处理与可观测性。

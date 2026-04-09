@@ -68,5 +68,12 @@ export async function appendTurn(
   conversationId: string,
   turn: Omit<Turn, "id" | "conversation_id" | "created_at">,
 ): Promise<Turn> {
-  return invoke<Turn>("storage_append_turn", { conversationId, turn });
+  return invoke<Turn>("storage_append_turn", {
+    conversationId,
+    role: turn.role,
+    content: turn.content,
+    routeType: turn.route_type,
+    toolCalls: turn.tool_calls ?? null,
+    toolCallId: turn.tool_call_id ?? null,
+  });
 }

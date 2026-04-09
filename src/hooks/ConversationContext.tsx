@@ -1,7 +1,8 @@
 /**
  * 会话运行时上下文
  *
- * 管理当前活跃会话的状态：正在进行的会话 ID、已加载的 Turn 列表、加载状态。
+ * 管理当前活跃会话的状态：正在进行的会话 ID、已加载的 Turn 列表、加载状态、
+ * 技能调用状态和来源引用。
  * 关闭窗口时自动清空，不持久化到本地存储。
  */
 
@@ -24,7 +25,9 @@ import type {
   Turn,
   Role,
   RouteType,
+  SourceRef,
 } from "../services/storage";
+import type { SkillCallInfo } from "../services/skills/types";
 
 export type ViewMode = "empty" | "chat" | "history";
 
@@ -35,6 +38,8 @@ interface ConversationState {
   loading: boolean;
   streamingText: string;
   threadImageData: string | null;
+  skillCallInfo: SkillCallInfo | null;
+  sources: SourceRef[];
 }
 
 interface ConversationActions {
@@ -45,6 +50,7 @@ interface ConversationActions {
     content: string,
     routeType?: RouteType | null,
     conversationId?: string,
+    extra?: Record<string, unknown>,
   ) => Promise<Turn>;
   closeConversation: () => void;
   removeConversation: (id: string) => Promise<void>;
@@ -52,6 +58,8 @@ interface ConversationActions {
   dismissHistory: () => void;
   setStreamingText: (text: string) => void;
   setThreadImageData: (data: string | null) => void;
+  setSkillCallInfo: (info: SkillCallInfo | null) => void;
+  setSources: (sources: SourceRef[]) => void;
 }
 
 type ConversationContextValue = ConversationState & ConversationActions;
@@ -82,6 +90,8 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     loading: false,
     streamingText: "",
     threadImageData: null,
+    skillCallInfo: null,
+    sources: [],
   });
 
   useEffect(() => {
@@ -93,6 +103,8 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
         loading: false,
         streamingText: "",
         threadImageData: null,
+        skillCallInfo: null,
+        sources: [],
       });
     }
 
@@ -114,6 +126,8 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
           loading: false,
           streamingText: "",
           threadImageData: null,
+          skillCallInfo: null,
+          sources: [],
         });
         return meta;
       } catch (err) {
@@ -136,6 +150,8 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
           loading: false,
           streamingText: "",
           threadImageData: null,
+          skillCallInfo: null,
+          sources: [],
         });
       } catch (err) {
         setState((prev) => ({ ...prev, loading: false }));
@@ -151,16 +167,21 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
       content: string,
       routeType?: RouteType | null,
       conversationId?: string,
+      extra?: Record<string, unknown>,
     ): Promise<Turn> => {
       const convId = conversationId ?? state.activeConversation?.id;
       if (!convId) {
         throw new Error("No active conversation");
       }
+
       const turn = await storageAppendTurn(convId, {
         role,
         content,
         route_type: routeType ?? null,
+        tool_calls: extra?.tool_calls,
+        tool_call_id: extra?.tool_call_id as string | undefined,
       });
+
       setState((prev) => ({
         ...prev,
         turns: [...prev.turns, turn],
@@ -181,6 +202,8 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
       loading: false,
       streamingText: "",
       threadImageData: null,
+      skillCallInfo: null,
+      sources: [],
     });
   }, []);
 
@@ -195,6 +218,8 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
           loading: false,
           streamingText: "",
           threadImageData: null,
+          skillCallInfo: null,
+          sources: [],
         });
       }
     },
@@ -220,6 +245,14 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     setState((prev) => ({ ...prev, threadImageData: data }));
   }, []);
 
+  const setSkillCallInfo = useCallback((info: SkillCallInfo | null) => {
+    setState((prev) => ({ ...prev, skillCallInfo: info }));
+  }, []);
+
+  const setSources = useCallback((sources: SourceRef[]) => {
+    setState((prev) => ({ ...prev, sources }));
+  }, []);
+
   const value: ConversationContextValue = {
     ...state,
     startNewConversation,
@@ -231,6 +264,8 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     dismissHistory,
     setStreamingText,
     setThreadImageData,
+    setSkillCallInfo,
+    setSources,
   };
 
   return (

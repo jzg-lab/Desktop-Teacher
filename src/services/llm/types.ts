@@ -7,7 +7,7 @@
 
 // ---------- 消息 ----------
 
-export type Role = "system" | "user" | "assistant";
+export type Role = "system" | "user" | "assistant" | "tool";
 
 export type TextContent = { type: "text"; text: string };
 
@@ -18,9 +18,44 @@ export type ImageContent = {
 
 export type MessageContent = string | Array<TextContent | ImageContent>;
 
+export interface ToolCallFunction {
+  name: string;
+  arguments: string;
+}
+
+export interface ToolCall {
+  id: string;
+  type: "function";
+  function: ToolCallFunction;
+}
+
 export interface ChatMessage {
   role: Role;
   content: MessageContent;
+  tool_calls?: ToolCall[];
+  tool_call_id?: string;
+  name?: string;
+}
+
+// ---------- 工具定义（传给 LLM API 的 tools 参数） ----------
+
+export interface ToolFunctionDef {
+  name: string;
+  description: string;
+  parameters: {
+    type: "object";
+    properties: Record<string, {
+      type: string;
+      description: string;
+      enum?: string[];
+    }>;
+    required: string[];
+  };
+}
+
+export interface ToolDefinition {
+  type: "function";
+  function: ToolFunctionDef;
 }
 
 // ---------- 请求 ----------
@@ -31,6 +66,8 @@ export interface ChatRequest {
   stream?: boolean;
   temperature?: number;
   max_tokens?: number;
+  tools?: ToolDefinition[];
+  tool_choice?: "auto" | "none" | { type: "function"; function: { name: string } };
 }
 
 // ---------- 响应 ----------
@@ -61,6 +98,15 @@ export interface ChatResponse {
 export interface StreamDelta {
   role?: Role;
   content?: string;
+  tool_calls?: Array<{
+    index: number;
+    id?: string;
+    type?: string;
+    function?: {
+      name?: string;
+      arguments?: string;
+    };
+  }>;
 }
 
 export interface StreamChoice {
@@ -88,6 +134,19 @@ export interface RouteMetadata {
   model: string;
   latency_ms: number;
   skill_invoked: boolean;
+}
+
+// ---------- 工具调用循环结果 ----------
+
+export interface ChatWithToolsResult {
+  text: string;
+  route: RouteMetadata;
+  sources: Array<{
+    id: string;
+    title: string;
+    url: string;
+    snippet: string;
+  }>;
 }
 
 // ---------- 错误 ----------

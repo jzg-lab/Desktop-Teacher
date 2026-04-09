@@ -28,6 +28,11 @@ function configFromEnv(): LLMClientConfig {
     };
   }
 
+  const tavilyKey = envStr("VITE_TAVILY_API_KEY");
+  if (tavilyKey) {
+    config.tavilyApiKey = tavilyKey;
+  }
+
   return config;
 }
 
@@ -52,6 +57,10 @@ function configFromSettings(settings: AppSettings): LLMClientConfig {
     };
   }
 
+  if (settings.tavily) {
+    config.tavilyApiKey = settings.tavily.apiKey;
+  }
+
   return config;
 }
 
@@ -63,6 +72,7 @@ function mergeConfig(settings: AppSettings): LLMClientConfig {
     defaultProvider: uiConfig.defaultProvider || envConfig.defaultProvider,
     openai: uiConfig.openai?.apiKey ? uiConfig.openai : envConfig.openai,
     qwen: uiConfig.qwen?.apiKey ? uiConfig.qwen : envConfig.qwen,
+    tavilyApiKey: uiConfig.tavilyApiKey || envConfig.tavilyApiKey,
   };
 }
 

@@ -4,6 +4,7 @@ export type {
   ConversationIndex,
   RouteType,
   Role,
+  SourceRef,
 } from "./types";
 
 export {

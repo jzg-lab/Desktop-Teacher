@@ -24,12 +24,20 @@ pub struct ProviderConfig {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct TavilyConfig {
+    pub api_key: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct AppSettings {
     pub default_provider: String,
     #[serde(default)]
     pub openai: Option<ProviderConfig>,
     #[serde(default)]
     pub qwen: Option<ProviderConfig>,
+    #[serde(default)]
+    pub tavily: Option<TavilyConfig>,
 }
 
 impl Default for AppSettings {
@@ -38,6 +46,7 @@ impl Default for AppSettings {
             default_provider: "openai".to_string(),
             openai: None,
             qwen: None,
+            tavily: None,
         }
     }
 }
@@ -78,6 +87,10 @@ pub struct Turn {
     pub role: String,
     pub content: String,
     pub route_type: Option<String>,
+    #[serde(default)]
+    pub tool_calls: Option<serde_json::Value>,
+    #[serde(default)]
+    pub tool_call_id: Option<String>,
     pub created_at: String,
 }
 
@@ -235,6 +248,8 @@ fn storage_append_turn(
     role: String,
     content: String,
     route_type: Option<String>,
+    tool_calls: Option<serde_json::Value>,
+    tool_call_id: Option<String>,
 ) -> Turn {
     let turn = Turn {
         id: new_id(),
@@ -242,6 +257,8 @@ fn storage_append_turn(
         role,
         content,
         route_type,
+        tool_calls,
+        tool_call_id,
         created_at: now_rfc3339(),
     };
 

@@ -71,6 +71,30 @@ export function turnsToMessages(
         messages.push({ role: "user", content: turn.content });
       }
       firstUserTurnHandled = true;
+    } else if (turn.role === "tool") {
+      messages.push({
+        role: "tool",
+        content: turn.content,
+        tool_call_id: (turn as Turn & { tool_call_id?: string }).tool_call_id ?? "",
+      });
+    } else if (turn.role === "assistant") {
+      const toolCallsData = (turn as Turn & { tool_calls?: unknown }).tool_calls;
+      if (toolCallsData && Array.isArray(toolCallsData)) {
+        messages.push({
+          role: "assistant",
+          content: turn.content || "",
+          tool_calls: toolCallsData as Array<{
+            id: string;
+            type: "function";
+            function: { name: string; arguments: string };
+          }>,
+        });
+      } else {
+        messages.push({
+          role: turn.role as "user" | "assistant",
+          content: turn.content,
+        });
+      }
     } else {
       messages.push({
         role: turn.role as "user" | "assistant",
@@ -80,6 +104,40 @@ export function turnsToMessages(
   }
 
   return messages;
+}
+
+/**
+ * 将工具调用结果转换为可追加的 Turn 列表。
+ *
+ * assistant 消息含 tool_calls 时，需要同时保存：
+ * 1. assistant Turn（含 tool_calls JSON）
+ * 2. 每个 tool_call 对应的 tool Turn（含结果）
+ */
+export function toolCallsToTurns(
+  assistantContent: string,
+  toolCalls: Array<{ id: string; type: "function"; function: { name: string; arguments: string } }>,
+  toolResults: Array<{ toolCallId: string; content: string }>,
+): Array<{ role: string; content: string; route_type: string | null; extra?: Record<string, unknown> }> {
+  const turns: Array<{ role: string; content: string; route_type: string | null; extra?: Record<string, unknown> }> = [];
+
+  turns.push({
+    role: "assistant",
+    content: assistantContent || "",
+    route_type: null,
+    extra: { tool_calls: toolCalls },
+  });
+
+  for (const result of toolResults) {
+    const toolCall = toolCalls.find((tc) => tc.id === result.toolCallId);
+    turns.push({
+      role: "tool",
+      content: result.content,
+      route_type: toolCall?.function.name === "web_search" ? "search" : "extraction",
+      extra: { tool_call_id: result.toolCallId },
+    });
+  }
+
+  return turns;
 }
 
 // ---------- 截断策略 ----------

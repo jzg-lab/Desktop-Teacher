@@ -8,6 +8,7 @@ export async function loadSettings(): Promise<AppSettings> {
     defaultProvider: raw.defaultProvider || DEFAULT_SETTINGS.defaultProvider,
     openai: raw.openai ?? null,
     qwen: raw.qwen ?? null,
+    tavily: raw.tavily ?? null,
   };
 }
 
@@ -15,4 +16,5 @@ export async function saveSettings(settings: AppSettings): Promise<void> {
   await invoke("settings_save", { settings });
 }
 
-export type { AppSettings, ProviderConfig } from "./types";
+export { DEFAULT_SETTINGS } from "./types";
+export type { AppSettings, ProviderConfig, TavilyConfig } from "./types";

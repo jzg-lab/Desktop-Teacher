@@ -102,6 +102,9 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
     qwen: settings.qwen
       ? { ...settings.qwen }
       : null,
+    tavily: settings.tavily
+      ? { ...settings.tavily }
+      : null,
   });
   const [saving, setSaving] = useState(false);
 
@@ -161,6 +164,30 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
             config={form.qwen}
             onChange={(c) => setForm({ ...form, qwen: c })}
           />
+
+          <div className="settings-section" style={{ marginTop: "16px", paddingTop: "16px", borderTop: "1px solid #374151" }}>
+            <h3 className="settings-field-label" style={{ marginBottom: "8px" }}>联网搜索</h3>
+            <div className="settings-field">
+              <label className="settings-field-label">Tavily API Key</label>
+              <input
+                type="password"
+                className="settings-input"
+                value={form.tavily?.apiKey ?? ""}
+                onChange={(e) => {
+                  const key = e.target.value;
+                  setForm({
+                    ...form,
+                    tavily: key ? { apiKey: key } : null,
+                  });
+                }}
+                placeholder="tvly-..."
+              />
+              <div style={{ fontSize: "12px", color: "#9ca3af", marginTop: "4px" }}>
+                配置 Tavily API Key 以启用联网搜索和网页提取功能。
+                可在 <a href="https://tavily.com" target="_blank" rel="noopener noreferrer" style={{ color: "#60a5fa" }}>tavily.com</a> 获取。
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="settings-footer">
