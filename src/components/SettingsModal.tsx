@@ -92,6 +92,15 @@ function ProviderSection({
   );
 }
 
+function resolveProvider(form: AppSettings): string {
+  const providers: string[] = [];
+  if (form.openai?.apiKey) providers.push("openai");
+  if (form.qwen?.apiKey) providers.push("qwen");
+  if (providers.length === 0) return form.defaultProvider;
+  if (providers.includes(form.defaultProvider)) return form.defaultProvider;
+  return providers[0];
+}
+
 export default function SettingsModal({ onClose }: SettingsModalProps) {
   const { settings, updateSettings } = useSettings();
   const [form, setForm] = useState<AppSettings>({
@@ -108,9 +117,15 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
   });
   const [saving, setSaving] = useState(false);
 
+  const currentProvider = resolveProvider(form);
+  const hasOpenai = !!form.openai?.apiKey;
+  const hasQwen = !!form.qwen?.apiKey;
+  const hasAnyProvider = hasOpenai || hasQwen;
+
   function handleSave() {
+    const finalForm = { ...form, defaultProvider: currentProvider };
     setSaving(true);
-    updateSettings(form)
+    updateSettings(finalForm)
       .then(() => {
         onClose();
       })
@@ -118,8 +133,6 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
         setSaving(false);
       });
   }
-
-  const hasProvider = form.openai || form.qwen;
 
   return (
     <div className="settings-overlay" onClick={onClose}>
@@ -140,16 +153,19 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
 
         <div className="settings-body">
           <div className="settings-section">
-            <label className="settings-field-label">默认 Provider</label>
+            <label className="settings-field-label">默认模型</label>
             <select
               className="settings-select"
-              value={form.defaultProvider}
+              value={currentProvider}
               onChange={(e) =>
                 setForm({ ...form, defaultProvider: e.target.value })
               }
             >
-              <option value="openai">OpenAI</option>
-              <option value="qwen">Qwen / 通义千问</option>
+              {hasOpenai && <option value="openai">OpenAI</option>}
+              {hasQwen && <option value="qwen">Qwen / 通义千问</option>}
+              {!hasAnyProvider && (
+                <option value="">请先配置至少一个 Provider</option>
+              )}
             </select>
           </div>
 
@@ -200,7 +216,7 @@ export default function SettingsModal({ onClose }: SettingsModalProps) {
           <button
             className="confirm-btn confirm-btn-primary"
             onClick={handleSave}
-            disabled={saving || !hasProvider}
+            disabled={saving || !hasAnyProvider}
           >
             {saving ? "保存中..." : "保存"}
           </button>

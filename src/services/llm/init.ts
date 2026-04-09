@@ -5,32 +5,35 @@ function envStr(key: string): string | undefined {
   return import.meta.env[key] as string | undefined;
 }
 
+function resolveDefaultProvider(config: LLMClientConfig): string {
+  if (config[config.defaultProvider as keyof LLMClientConfig]) {
+    return config.defaultProvider;
+  }
+  if (config.openai) return "openai";
+  if (config.qwen) return "qwen";
+  return config.defaultProvider;
+}
+
 function configFromEnv(): LLMClientConfig {
+  const openaiKey = envStr("VITE_OPENAI_API_KEY");
+  const qwenKey = envStr("VITE_QWEN_API_KEY");
+
   const config: LLMClientConfig = {
-    defaultProvider: envStr("VITE_LLM_DEFAULT_PROVIDER") ?? "openai",
+    defaultProvider: resolveDefaultProvider({
+      defaultProvider: envStr("VITE_LLM_DEFAULT_PROVIDER") ?? "openai",
+      ...(openaiKey ? { openai: { apiKey: openaiKey, baseUrl: envStr("VITE_OPENAI_BASE_URL"), defaultModel: envStr("VITE_OPENAI_MODEL") } } : {}),
+      ...(qwenKey ? { qwen: { apiKey: qwenKey, baseUrl: envStr("VITE_QWEN_BASE_URL"), defaultModel: envStr("VITE_QWEN_MODEL") } } : {}),
+    }),
   };
 
-  const openaiKey = envStr("VITE_OPENAI_API_KEY");
   if (openaiKey) {
-    config.openai = {
-      apiKey: openaiKey,
-      baseUrl: envStr("VITE_OPENAI_BASE_URL"),
-      defaultModel: envStr("VITE_OPENAI_MODEL"),
-    };
+    config.openai = { apiKey: openaiKey, baseUrl: envStr("VITE_OPENAI_BASE_URL"), defaultModel: envStr("VITE_OPENAI_MODEL") };
   }
-
-  const qwenKey = envStr("VITE_QWEN_API_KEY");
   if (qwenKey) {
-    config.qwen = {
-      apiKey: qwenKey,
-      baseUrl: envStr("VITE_QWEN_BASE_URL"),
-      defaultModel: envStr("VITE_QWEN_MODEL"),
-    };
+    config.qwen = { apiKey: qwenKey, baseUrl: envStr("VITE_QWEN_BASE_URL"), defaultModel: envStr("VITE_QWEN_MODEL") };
   }
-
-  const tavilyKey = envStr("VITE_TAVILY_API_KEY");
-  if (tavilyKey) {
-    config.tavilyApiKey = tavilyKey;
+  if (envStr("VITE_TAVILY_API_KEY")) {
+    config.tavilyApiKey = envStr("VITE_TAVILY_API_KEY");
   }
 
   return config;
@@ -48,7 +51,6 @@ function configFromSettings(settings: AppSettings): LLMClientConfig {
       defaultModel: settings.openai.model || undefined,
     };
   }
-
   if (settings.qwen) {
     config.qwen = {
       apiKey: settings.qwen.apiKey,
@@ -56,7 +58,6 @@ function configFromSettings(settings: AppSettings): LLMClientConfig {
       defaultModel: settings.qwen.model || undefined,
     };
   }
-
   if (settings.tavily) {
     config.tavilyApiKey = settings.tavily.apiKey;
   }
@@ -68,12 +69,15 @@ function mergeConfig(settings: AppSettings): LLMClientConfig {
   const envConfig = configFromEnv();
   const uiConfig = configFromSettings(settings);
 
-  return {
+  const merged: LLMClientConfig = {
     defaultProvider: uiConfig.defaultProvider || envConfig.defaultProvider,
     openai: uiConfig.openai?.apiKey ? uiConfig.openai : envConfig.openai,
     qwen: uiConfig.qwen?.apiKey ? uiConfig.qwen : envConfig.qwen,
     tavilyApiKey: uiConfig.tavilyApiKey || envConfig.tavilyApiKey,
   };
+
+  merged.defaultProvider = resolveDefaultProvider(merged);
+  return merged;
 }
 
 let _client: UnifiedLLMClient | null = null;
