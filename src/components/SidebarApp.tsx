@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { getCurrentWebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
@@ -18,6 +18,9 @@ import { getSearchTools } from "../services/llm/prompt";
 import type { ChatMessage, RouteType } from "../services/llm";
 import type { SkillCallInfo } from "../services/skills/types";
 import type { SourceRef } from "../services/storage";
+import { classifyError, checkNetworkAvailability } from "../services/errors";
+import type { ClassifiedError } from "../services/errors";
+import { logError, logRequestDiagnostic } from "../services/logger";
 
 type AvatarStatus = "idle" | "processing" | "searching" | "extracting" | "error";
 
@@ -53,7 +56,16 @@ function SidebarAppInner() {
     setSources,
     sources,
     skillCallInfo,
+    lastError,
+    setLastError,
+    clearError,
   } = useConversationContext();
+
+  const lastRequestRef = useRef<{
+    messages: ChatMessage[];
+    convId?: string;
+    enableTools?: boolean;
+  } | null>(null);
 
   useEffect(() => {
     const unlisten = listen<string>("capture-selected", (event) => {
@@ -78,6 +90,7 @@ function SidebarAppInner() {
   ): Promise<string> {
     let fullText = "";
     const client = getLLMClient();
+    const startTime = performance.now();
 
     if (enableTools && client.tavilyApiKey) {
       const result = await client.chatWithTools(
@@ -94,18 +107,41 @@ function SidebarAppInner() {
       const routeType = result.route.route_type as RouteType;
       await appendTurn("assistant", fullText, routeType, convId);
 
+      logRequestDiagnostic({
+        routeType: routeType,
+        provider: result.route.provider,
+        model: result.route.model,
+        skillInvoked: result.route.skill_invoked,
+        success: true,
+        latencyMs: result.route.latency_ms,
+      });
+
       for (const source of result.sources) {
         await appendTurn("assistant", `[${source.title}](${source.url})`, routeType, convId);
       }
     } else {
       setStreamingText("");
+      let routeModel = "";
       for await (const chunk of client.chatStream({ messages })) {
         const delta = chunk.choices?.[0]?.delta?.content ?? "";
         fullText += delta;
         setStreamingText(fullText);
+        if (!routeModel && chunk.model) {
+          routeModel = chunk.model;
+        }
       }
       setStreamingText("");
       await appendTurn("assistant", fullText, "direct", convId);
+
+      const latencyMs = Math.round(performance.now() - startTime);
+      logRequestDiagnostic({
+        routeType: "direct",
+        provider: client["defaultProvider"],
+        model: routeModel || "unknown",
+        skillInvoked: false,
+        success: true,
+        latencyMs,
+      });
     }
 
     return fullText;
@@ -114,6 +150,16 @@ function SidebarAppInner() {
   const handleSubmit = useCallback(
     async (request: CaptureRequest) => {
       setStatus("processing");
+      clearError();
+
+      if (!checkNetworkAvailability()) {
+        const classified = classifyError(new TypeError("Failed to fetch"));
+        setLastError(classified);
+        setStatus("error");
+        logError("network", "网络不可用，无法提交截图提问");
+        return;
+      }
+
       try {
         let convId = activeConversation?.id;
 
@@ -141,6 +187,8 @@ function SidebarAppInner() {
           hasQuestion,
         });
 
+        lastRequestRef.current = { messages, convId, enableTools: forceSearch };
+
         await streamAndSave(messages, convId, forceSearch, (info) => {
           if (info.status === "searching") {
             setStatus("searching");
@@ -153,26 +201,29 @@ function SidebarAppInner() {
 
         setPendingCaptureImage(null);
         setStatus("idle");
-      } catch {
+      } catch (err) {
         setStreamingText("");
+        const classified = classifyError(err);
+        setLastError(classified);
         setStatus("error");
       }
     },
-    [activeConversation, startNewConversation, appendTurn, turns, setStreamingText, setThreadImageData, setSources, forceSearch],
+    [activeConversation, startNewConversation, appendTurn, turns, setStreamingText, setThreadImageData, setSources, forceSearch, clearError, setLastError],
   );
-
-  const handleCancel = useCallback(() => {
-    setPendingCaptureImage(null);
-  }, []);
-
-  const handleRecapture = useCallback(() => {
-    setPendingCaptureImage(null);
-    invoke("capture_cancel").catch(() => {});
-  }, []);
 
   const handleChatSend = useCallback(
     async (text: string, searchMode?: boolean) => {
       setStatus("processing");
+      clearError();
+
+      if (!checkNetworkAvailability()) {
+        const classified = classifyError(new TypeError("Failed to fetch"));
+        setLastError(classified);
+        setStatus("error");
+        logError("network", "网络不可用，无法发送消息");
+        return;
+      }
+
       try {
         await appendTurn("user", text);
 
@@ -190,6 +241,8 @@ function SidebarAppInner() {
 
         const shouldUseTools = searchMode || forceSearch;
 
+        lastRequestRef.current = { messages, enableTools: shouldUseTools };
+
         await streamAndSave(messages, undefined, shouldUseTools, (info) => {
           setSkillCallInfo(info);
           if (info.status === "searching") {
@@ -203,13 +256,57 @@ function SidebarAppInner() {
 
         setStatus("idle");
         setForceSearch(false);
-      } catch {
+      } catch (err) {
         setStreamingText("");
+        const classified = classifyError(err);
+        setLastError(classified);
         setStatus("error");
       }
     },
-    [appendTurn, turns, threadImageData, setStreamingText, setSources, setSkillCallInfo, forceSearch],
+    [appendTurn, turns, threadImageData, setStreamingText, setSources, setSkillCallInfo, forceSearch, clearError, setLastError],
   );
+
+  const handleRetry = useCallback(async () => {
+    const last = lastRequestRef.current;
+    if (!last) return;
+
+    setStatus("processing");
+    clearError();
+
+    if (!checkNetworkAvailability()) {
+      const classified = classifyError(new TypeError("Failed to fetch"));
+      setLastError(classified);
+      setStatus("error");
+      return;
+    }
+
+    try {
+      await streamAndSave(last.messages, last.convId, last.enableTools, (info) => {
+        if (info.status === "searching") {
+          setStatus("searching");
+        } else if (info.status === "extracting") {
+          setStatus("extracting");
+        } else if (info.status === "error") {
+          setStatus("error");
+        }
+      });
+      setStatus("idle");
+    } catch (err) {
+      setStreamingText("");
+      const classified = classifyError(err);
+      setLastError(classified);
+      setStatus("error");
+    }
+  }, [clearError, setLastError]);
+
+  const handleCancel = useCallback(() => {
+    setPendingCaptureImage(null);
+  }, []);
+
+  const handleRecapture = useCallback(() => {
+    setPendingCaptureImage(null);
+    invoke("capture_cancel").catch(() => {});
+  }, []);
 
   const showCapture = pendingCaptureImage && viewMode !== "history";
 
@@ -339,6 +436,23 @@ function SidebarAppInner() {
           </div>
         )}
       </main>
+
+      {lastError && (
+        <div className="error-banner">
+          <div className="error-banner-content">
+            <span className="error-banner-icon">⚠</span>
+            <span className="error-banner-message">{lastError.userMessage}</span>
+            {lastError.retryable && (
+              <button className="error-banner-retry" onClick={handleRetry}>
+                重试
+              </button>
+            )}
+            <button className="error-banner-close" onClick={clearError} aria-label="关闭错误提示">
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
 
       {showSettings && (
         <SettingsModal onClose={() => setShowSettings(false)} />

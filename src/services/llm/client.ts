@@ -21,6 +21,7 @@ import { QwenAdapter, type QwenConfig } from "./qwen";
 import { executeToolCall } from "../skills/executor";
 import type { SkillExecutionResult, SkillCallInfo } from "../skills/types";
 import type { SourceRef } from "../storage/types";
+import { logSkillDiagnostic } from "../logger";
 
 export interface LLMClientConfig {
   defaultProvider: string;
@@ -148,7 +149,18 @@ export class UnifiedLLMClient {
           onStatus?.({ status: "extracting", url: JSON.parse(fn.arguments).urls });
         }
 
+        const skillStart = performance.now();
         const result = await executeToolCall(this.tavilyApiKey, fn);
+        const skillLatency = Math.round(performance.now() - skillStart);
+
+        logSkillDiagnostic({
+          skill: fn.name as "web_search" | "web_extract",
+          success: result.success,
+          latencyMs: skillLatency,
+          errorCode: result.success ? undefined : result.error,
+          errorMessage: result.success ? undefined : result.error,
+          query: fn.name === "web_search" ? JSON.parse(fn.arguments).query : undefined,
+        });
 
         if (result.success) {
           skillInvoked = true;

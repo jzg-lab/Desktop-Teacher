@@ -28,6 +28,7 @@ import type {
   SourceRef,
 } from "../services/storage";
 import type { SkillCallInfo } from "../services/skills/types";
+import type { ClassifiedError } from "../services/errors";
 
 export type ViewMode = "empty" | "chat" | "history";
 
@@ -40,6 +41,7 @@ interface ConversationState {
   threadImageData: string | null;
   skillCallInfo: SkillCallInfo | null;
   sources: SourceRef[];
+  lastError: ClassifiedError | null;
 }
 
 interface ConversationActions {
@@ -60,6 +62,8 @@ interface ConversationActions {
   setThreadImageData: (data: string | null) => void;
   setSkillCallInfo: (info: SkillCallInfo | null) => void;
   setSources: (sources: SourceRef[]) => void;
+  setLastError: (error: ClassifiedError | null) => void;
+  clearError: () => void;
 }
 
 type ConversationContextValue = ConversationState & ConversationActions;
@@ -92,6 +96,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     threadImageData: null,
     skillCallInfo: null,
     sources: [],
+    lastError: null,
   });
 
   useEffect(() => {
@@ -105,6 +110,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
         threadImageData: null,
         skillCallInfo: null,
         sources: [],
+        lastError: null,
       });
     }
 
@@ -204,6 +210,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
       threadImageData: null,
       skillCallInfo: null,
       sources: [],
+      lastError: null,
     });
   }, []);
 
@@ -220,6 +227,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
           threadImageData: null,
           skillCallInfo: null,
           sources: [],
+          lastError: null,
         });
       }
     },
@@ -253,6 +261,14 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     setState((prev) => ({ ...prev, sources }));
   }, []);
 
+  const setLastError = useCallback((error: ClassifiedError | null) => {
+    setState((prev) => ({ ...prev, lastError: error }));
+  }, []);
+
+  const clearError = useCallback(() => {
+    setState((prev) => ({ ...prev, lastError: null }));
+  }, []);
+
   const value: ConversationContextValue = {
     ...state,
     startNewConversation,
@@ -266,6 +282,8 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     setThreadImageData,
     setSkillCallInfo,
     setSources,
+    setLastError,
+    clearError,
   };
 
   return (

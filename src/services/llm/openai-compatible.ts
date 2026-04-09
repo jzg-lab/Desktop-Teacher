@@ -8,6 +8,7 @@
 import type { ChatRequest, ChatResponse, ChatStreamChunk } from "./types";
 import type { ProviderAdapter } from "./adapter";
 import { wrapHttpError } from "./adapter";
+import { logError, logWarn } from "../logger";
 
 export interface OpenAICompatibleConfig {
   name: string;
@@ -38,7 +39,9 @@ export abstract class OpenAICompatibleAdapter implements ProviderAdapter {
     });
 
     if (!res.ok) {
-      throw wrapHttpError(this.name, res.status, await res.json());
+      const body = await res.json().catch(() => ({}));
+      logError("llm", `${this.name} chat HTTP error`, { status: res.status, provider: this.name });
+      throw wrapHttpError(this.name, res.status, body);
     }
     return (await res.json()) as ChatResponse;
   }
@@ -52,11 +55,16 @@ export abstract class OpenAICompatibleAdapter implements ProviderAdapter {
     });
 
     if (!res.ok) {
-      throw wrapHttpError(this.name, res.status, await res.json());
+      const body = await res.json().catch(() => ({}));
+      logError("llm", `${this.name} chatStream HTTP error`, { status: res.status, provider: this.name });
+      throw wrapHttpError(this.name, res.status, body);
     }
 
     const reader = res.body?.getReader();
-    if (!reader) throw new Error("No response body for streaming");
+    if (!reader) {
+      logError("llm", `${this.name} stream: no response body`);
+      throw new Error("No response body for streaming");
+    }
 
     const decoder = new TextDecoder();
     let buffer = "";
@@ -74,7 +82,11 @@ export abstract class OpenAICompatibleAdapter implements ProviderAdapter {
         if (!trimmed || !trimmed.startsWith("data: ")) continue;
         const data = trimmed.slice(6);
         if (data === "[DONE]") return;
-        yield JSON.parse(data) as ChatStreamChunk;
+        try {
+          yield JSON.parse(data) as ChatStreamChunk;
+        } catch {
+          logWarn("llm", `${this.name} stream: failed to parse chunk`, { data: data.slice(0, 100) });
+        }
       }
     }
   }

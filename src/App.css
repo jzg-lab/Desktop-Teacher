@@ -775,3 +775,102 @@
   padding: 14px 16px;
   border-top: 1px solid var(--border-color);
 }
+
+/* ---- Error Banner ---- */
+
+.error-banner {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  background: #fef2f2;
+  border-top: 1px solid #fecaca;
+}
+
+@media (prefers-color-scheme: dark) {
+  .error-banner {
+    background: #2d1b1b;
+    border-top-color: #5c2a2a;
+  }
+}
+
+.error-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  .error-banner-content {
+    color: #f87171;
+  }
+}
+
+.error-banner-icon {
+  flex-shrink: 0;
+  font-size: 14px;
+}
+
+.error-banner-message {
+  flex: 1;
+  line-height: 1.4;
+}
+
+.error-banner-retry {
+  flex-shrink: 0;
+  padding: 3px 10px;
+  border: 1px solid #dc2626;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #dc2626;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s ease, color 0.15s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  .error-banner-retry {
+    border-color: #f87171;
+    color: #f87171;
+  }
+}
+
+.error-banner-retry:hover {
+  background: #dc2626;
+  color: white;
+}
+
+@media (prefers-color-scheme: dark) {
+  .error-banner-retry:hover {
+    background: #f87171;
+    color: #1a1918;
+  }
+}
+
+.error-banner-close {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: #dc2626;
+  font-size: 14px;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+@media (prefers-color-scheme: dark) {
+  .error-banner-close {
+    color: #f87171;
+  }
+}
+
+.error-banner-close:hover {
+  background: rgba(220, 38, 38, 0.15);
+}
