@@ -40,11 +40,11 @@
 6. ~~step-05-follow-up-chat.md~~ ✓
 7. ~~step-06-search-skills-and-routing.md~~ ✓
 8. ~~step-07-errors-and-observability.md~~ ✓
-9. [step-08-polish-and-release.md](step-08-polish-and-release.md)
+9. ~~step-08-polish-and-release.md~~ ✓
 10. [step-09-bugfix-and-ux-improvements.md](active/step-09-bugfix-and-ux-improvements.md)
 
 ## 当前下一步
 
 - [step-09-bugfix-and-ux-improvements.md](active/step-09-bugfix-and-ux-improvements.md)
 
-Step-00 ~ Step-07 已完成，Step-08 为打磨与发布准备。Step-09 为 Bug 修复与 UX 改进，包含截图历史串图 Bug、滚轮/滚动 Bug、窗口调整大小优化和聊天式对话流优化。
+Step-00 ~ Step-08 已完成。Step-09 为 Bug 修复与 UX 改进，包含截图历史串图 Bug、滚轮/滚动 Bug、窗口调整大小优化和聊天式对话流优化。

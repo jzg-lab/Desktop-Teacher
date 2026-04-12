@@ -97,10 +97,22 @@ pub fn create_sidebar_window<R: Runtime>(app: &AppHandle<R>) {
         .title("Desktop Teacher")
         .inner_size(sidebar_width, sidebar_height)
         .decorations(false)
-        .always_on_top(true)
+        .always_on_top(false)
         .skip_taskbar(true)
         .resizable(true)
         .visible(false)
         .position(x, y)
         .build();
+}
+
+#[tauri::command]
+pub fn toggle_always_on_top(app: AppHandle) -> Result<bool, String> {
+    let win = app
+        .get_webview_window("sidebar")
+        .ok_or("sidebar window not found")?;
+    let current = win.is_always_on_top().map_err(|e| e.to_string())?;
+    let new_state = !current;
+    win.set_always_on_top(new_state)
+        .map_err(|e| e.to_string())?;
+    Ok(new_state)
 }

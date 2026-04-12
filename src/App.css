@@ -92,6 +92,14 @@
   background: var(--border-color);
 }
 
+.header-btn-active {
+  color: var(--accent);
+}
+
+.header-btn-active:hover {
+  background: var(--accent-soft);
+}
+
 /* ---- Body ---- */
 
 .sidebar-body {

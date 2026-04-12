@@ -65,6 +65,8 @@ docs/              # 产品文档
 | step-04 模型适配与回答 | Done |
 | step-05 多轮追问与上下文保持 | Done |
 | step-06 搜索 Skill 与路由控制 | Done |
+| step-07 错误与可观测性 | Done |
+| step-08 打磨与发布准备 | Done |
 
 ## 开发
 

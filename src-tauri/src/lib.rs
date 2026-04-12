@@ -358,6 +358,7 @@ fn build_app() -> tauri::Builder<tauri::Wry> {
             storage_append_turn,
             settings_load,
             settings_save,
+            tray::toggle_always_on_top,
             capture::capture_get_screenshot,
             capture::capture_crop_region,
             capture::capture_window_at_point,
@@ -397,6 +398,7 @@ fn build_app() -> tauri::Builder<tauri::Wry> {
             storage_append_turn,
             settings_load,
             settings_save,
+            tray::toggle_always_on_top,
         ])
 }
 

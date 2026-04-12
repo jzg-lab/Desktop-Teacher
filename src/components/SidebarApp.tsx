@@ -32,11 +32,16 @@ const STATUS_CONFIG: Record<AvatarStatus, { label: string; color: string }> = {
   error: { label: "出错了", color: "#f87171" },
 };
 
+async function togglePinned(): Promise<boolean> {
+  return invoke<boolean>("toggle_always_on_top");
+}
+
 function SidebarAppInner() {
   const [status, setStatus] = useState<AvatarStatus>("idle");
   const [pendingCaptureImage, setPendingCaptureImage] = useState<string | null>(null);
   const [showSettings, setShowSettings] = useState(false);
   const [forceSearch, setForceSearch] = useState(false);
+  const [pinned, setPinned] = useState(false);
   const config = STATUS_CONFIG[status];
 
   const {
@@ -350,6 +355,24 @@ function SidebarAppInner() {
                 stroke="currentColor"
                 strokeWidth="1.2"
                 strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </button>
+          <button
+            className={`header-btn${pinned ? " header-btn-active" : ""}`}
+            onClick={async () => {
+              const newState = await togglePinned();
+              setPinned(newState);
+            }}
+            aria-label={pinned ? "取消置顶" : "置顶"}
+            title={pinned ? "取消置顶" : "置顶"}
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill={pinned ? "currentColor" : "none"}>
+              <path
+                d="M7 1L8.5 5.5L13 7L8.5 8.5L7 13L5.5 8.5L1 7L5.5 5.5L7 1Z"
+                stroke="currentColor"
+                strokeWidth="1.2"
                 strokeLinejoin="round"
               />
             </svg>
