@@ -174,14 +174,21 @@ const appendTurn = useCallback(
         image_data: imageData ?? null,
       });
 
+      // Rust storage stores image_data as a file path reference (e.g. "attachments/xxx.png"),
+      // but in-memory we need the actual base64/data URL for immediate rendering.
+      const inMemoryTurn: Turn = {
+        ...turn,
+        image_data: imageData ?? turn.image_data ?? null,
+      };
+
       setState((prev) => ({
         ...prev,
-        turns: [...prev.turns, turn],
+        turns: [...prev.turns, inMemoryTurn],
         activeConversation: prev.activeConversation
           ? { ...prev.activeConversation, updated_at: turn.created_at }
           : null,
       }));
-      return turn;
+      return inMemoryTurn;
     },
     [state.activeConversation],
   );

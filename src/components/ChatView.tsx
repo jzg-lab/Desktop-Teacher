@@ -202,9 +202,7 @@ function ChatView({ onSend, loading, sources = [], skillCallInfo }: ChatViewProp
         {loading && !streamingText && (
           <div className="chat-turn chat-turn-assistant">
             <div className="chat-turn-content thinking-indicator">
-              <span className="thinking-dot" />
-              <span className="thinking-dot" />
-              <span className="thinking-dot" />
+              <div className="thinking-spinner" />
               <span className="thinking-label">AI 正在思考…</span>
             </div>
           </div>
