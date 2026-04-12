@@ -15,6 +15,8 @@ export interface OpenAICompatibleConfig {
   apiKey: string;
   baseUrl: string;
   defaultModel: string;
+  /** Model to use when messages contain image content. If unset, defaultModel is always used. */
+  visionModel?: string;
 }
 
 export abstract class OpenAICompatibleAdapter implements ProviderAdapter {
@@ -22,12 +24,14 @@ export abstract class OpenAICompatibleAdapter implements ProviderAdapter {
   private readonly apiKey: string;
   private readonly baseUrl: string;
   private readonly defaultModel: string;
+  private readonly visionModel: string | undefined;
 
   constructor(config: OpenAICompatibleConfig) {
     this.name = config.name;
     this.apiKey = config.apiKey;
     this.baseUrl = config.baseUrl.replace(/\/$/, "");
     this.defaultModel = config.defaultModel;
+    this.visionModel = config.visionModel;
   }
 
   async chat(req: ChatRequest): Promise<ChatResponse> {
@@ -40,7 +44,7 @@ export abstract class OpenAICompatibleAdapter implements ProviderAdapter {
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      logError("llm", `${this.name} chat HTTP error`, { status: res.status, provider: this.name });
+      logError("llm", `${this.name} chat HTTP error`, { status: res.status, provider: this.name, detail: body });
       throw wrapHttpError(this.name, res.status, body);
     }
     return (await res.json()) as ChatResponse;
@@ -56,7 +60,7 @@ export abstract class OpenAICompatibleAdapter implements ProviderAdapter {
 
     if (!res.ok) {
       const body = await res.json().catch(() => ({}));
-      logError("llm", `${this.name} chatStream HTTP error`, { status: res.status, provider: this.name });
+      logError("llm", `${this.name} chatStream HTTP error`, { status: res.status, provider: this.name, detail: body });
       throw wrapHttpError(this.name, res.status, body);
     }
 
@@ -101,8 +105,17 @@ export abstract class OpenAICompatibleAdapter implements ProviderAdapter {
   }
 
   private buildBody(req: ChatRequest, stream: boolean) {
+    const hasImageContent = req.messages.some((m) => {
+      if (typeof m.content !== "string" && Array.isArray(m.content)) {
+        return m.content.some((part) => part.type === "image_url");
+      }
+      return false;
+    });
+
+    const model = (hasImageContent && this.visionModel) ? this.visionModel : (req.model || this.defaultModel);
+
     const body: Record<string, unknown> = {
-      model: req.model || this.defaultModel,
+      model,
       messages: req.messages,
       stream,
       ...(req.temperature != null && { temperature: req.temperature }),

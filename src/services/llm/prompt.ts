@@ -59,7 +59,6 @@ export function getSearchTools(): ToolDefinition[] {
   return ALLOWED_TOOLS;
 }
 
-/** @param imageData base64 图片数据（不含 data: 前缀） @param textQuestion 用户文本问题 */
 export function buildUserContent(
   imageData: string | null,
   textQuestion?: string,
@@ -68,8 +67,10 @@ export function buildUserContent(
     return textQuestion ?? "请解释这张截图中的内容";
   }
 
+  const imageUrl = imageData.startsWith("data:") ? imageData : `data:image/png;base64,${imageData}`;
+
   const parts: Array<TextContent | ImageContent> = [
-    { type: "image_url", image_url: { url: `data:image/png;base64,${imageData}` } },
+    { type: "image_url", image_url: { url: imageUrl } },
   ];
 
   parts.push({ type: "text", text: textQuestion || "请解释这张截图中的内容" });
