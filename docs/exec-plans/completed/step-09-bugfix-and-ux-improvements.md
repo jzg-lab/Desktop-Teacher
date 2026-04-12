@@ -1,6 +1,6 @@
 # 步骤 09：Bug 修复与 UX 改进
 
-状态：Planned  
+状态：Completed  
 目标版本：V0 / MVP  
 关联文档：
 

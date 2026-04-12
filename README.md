@@ -67,6 +67,7 @@ docs/              # 产品文档
 | step-06 搜索 Skill 与路由控制 | Done |
 | step-07 错误与可观测性 | Done |
 | step-08 打磨与发布准备 | Done |
+| step-09 Bug 修复与 UX 改进 | Done |
 
 ## 开发
 
