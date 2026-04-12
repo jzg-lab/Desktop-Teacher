@@ -53,6 +53,7 @@ interface ConversationActions {
     routeType?: RouteType | null,
     conversationId?: string,
     extra?: Record<string, unknown>,
+    imageData?: string | null,
   ) => Promise<Turn>;
   closeConversation: () => void;
   removeConversation: (id: string) => Promise<void>;
@@ -150,13 +151,14 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
     [],
   );
 
-  const appendTurn = useCallback(
+const appendTurn = useCallback(
     async (
       role: Role,
       content: string,
       routeType?: RouteType | null,
       conversationId?: string,
       extra?: Record<string, unknown>,
+      imageData?: string | null,
     ): Promise<Turn> => {
       const convId = conversationId ?? state.activeConversation?.id;
       if (!convId) {
@@ -169,6 +171,7 @@ export function ConversationProvider({ children }: ConversationProviderProps) {
         route_type: routeType ?? null,
         tool_calls: extra?.tool_calls,
         tool_call_id: extra?.tool_call_id as string | undefined,
+        image_data: imageData ?? null,
       });
 
       setState((prev) => ({

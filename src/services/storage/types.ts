@@ -26,6 +26,7 @@ export interface Turn {
   created_at: string;
   tool_calls?: unknown;
   tool_call_id?: string;
+  image_data?: string | null;
 }
 
 export interface SourceRef {

@@ -75,5 +75,6 @@ export async function appendTurn(
     routeType: turn.route_type,
     toolCalls: turn.tool_calls ?? null,
     toolCallId: turn.tool_call_id ?? null,
+    imageData: turn.image_data ?? null,
   });
 }

@@ -91,6 +91,8 @@ pub struct Turn {
     pub tool_calls: Option<serde_json::Value>,
     #[serde(default)]
     pub tool_call_id: Option<String>,
+    #[serde(default)]
+    pub image_data: Option<String>,
     pub created_at: String,
 }
 
@@ -235,7 +237,26 @@ fn storage_load_turns(app: tauri::AppHandle, conversation_id: String) -> Vec<Tur
     let path = data_dir(&app).join(&conversation_id).join("messages.json");
     if path.exists() {
         let content = fs::read_to_string(&path).expect("Failed to read turns");
-        serde_json::from_str(&content).unwrap_or_default()
+        let mut turns: Vec<Turn> = serde_json::from_str(&content).unwrap_or_default();
+        for turn in turns.iter_mut() {
+            if let Some(ref_path) = &turn.image_data {
+                if ref_path.starts_with("attachments/") {
+                    let file_path = data_dir(&app).join(&conversation_id).join(ref_path);
+                    if file_path.exists() {
+                        if let Ok(bytes) = fs::read(&file_path) {
+                            let encoded = base64::Engine::encode(
+                                &base64::engine::general_purpose::STANDARD,
+                                &bytes,
+                            );
+                            turn.image_data = Some(format!("data:image/png;base64,{}", encoded));
+                        }
+                    } else {
+                        turn.image_data = None;
+                    }
+                }
+            }
+        }
+        turns
     } else {
         Vec::new()
     }
@@ -250,15 +271,39 @@ fn storage_append_turn(
     route_type: Option<String>,
     tool_calls: Option<serde_json::Value>,
     tool_call_id: Option<String>,
+    image_data: Option<String>,
 ) -> Turn {
+    let turn_id = new_id();
+    let stored_image_data = if let Some(data) = &image_data {
+        let base = data_dir(&app).join(&conversation_id);
+        let attachments_dir = base.join("attachments");
+        let _ = fs::create_dir_all(&attachments_dir);
+        let file_path = attachments_dir.join(format!("{}.png", turn_id));
+        let base64_data = if data.starts_with("data:image") {
+            data.split(',').nth(1).unwrap_or(data)
+        } else {
+            data
+        };
+        match base64::Engine::decode(&base64::engine::general_purpose::STANDARD, base64_data) {
+            Ok(bytes) => {
+                let _ = fs::write(&file_path, &bytes);
+                Some(format!("attachments/{}.png", turn_id))
+            }
+            Err(_) => Some(data.clone()),
+        }
+    } else {
+        None
+    };
+
     let turn = Turn {
-        id: new_id(),
+        id: turn_id,
         conversation_id: conversation_id.clone(),
         role,
         content,
         route_type,
         tool_calls,
         tool_call_id,
+        image_data: stored_image_data,
         created_at: now_rfc3339(),
     };
 

@@ -94,10 +94,30 @@ function ChatView({ onSend, loading, sources = [], skillCallInfo }: ChatViewProp
     useConversationContext();
   const [input, setInput] = useState("");
   const bottomRef = useRef<HTMLDivElement>(null);
+  const turnsContainerRef = useRef<HTMLDivElement>(null);
+  const isNearBottomRef = useRef(true);
+  const prevStreamingRef = useRef(streamingText);
+
+  const checkNearBottom = () => {
+    const el = turnsContainerRef.current;
+    if (!el) return;
+    isNearBottomRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (isNearBottomRef.current) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
   }, [turns.length, streamingText]);
+
+  useEffect(() => {
+    if (prevStreamingRef.current && !streamingText) {
+      bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+    prevStreamingRef.current = streamingText;
+  }, [streamingText]);
+
+  const visibleTurns = turns.filter((t) => t.role !== "system" && t.role !== "tool");
 
   function handleSend() {
     const text = input.trim();
@@ -143,11 +163,27 @@ function ChatView({ onSend, loading, sources = [], skillCallInfo }: ChatViewProp
 
       <SkillStatusBar skillCallInfo={skillCallInfo ?? null} />
 
-      <div className="chat-turns">
-        {turns
-          .filter((t) => t.role !== "system" && t.role !== "tool")
+      <div className="chat-turns" ref={turnsContainerRef} onScroll={checkNearBottom}>
+        {visibleTurns.length === 0 && !streamingText && !loading && (
+          <div className="welcome-card">
+            <div className="welcome-icon">👋</div>
+            <div className="welcome-title">欢迎使用 Desktop Teacher</div>
+            <div className="welcome-subtitle">截屏提问或直接输入文字</div>
+          </div>
+        )}
+        {visibleTurns
           .map((turn: Turn) => (
             <div key={turn.id} className={`chat-turn chat-turn-${turn.role}`}>
+              {turn.role === "user" && turn.image_data && (
+                <div className="chat-turn-image">
+                  <img
+                    src={turn.image_data.startsWith("data:") ? turn.image_data : `data:image/png;base64,${turn.image_data}`}
+                    alt="截图"
+                    className="chat-turn-thumb"
+                    onClick={() => window.open(turn.image_data.startsWith("data:") ? turn.image_data : `data:image/png;base64,${turn.image_data}`, "_blank")}
+                  />
+                </div>
+              )}
               <div className="chat-turn-content">
                 {turn.role === "assistant" ? (
                   <Markdown>{turn.content}</Markdown>
@@ -163,10 +199,21 @@ function ChatView({ onSend, loading, sources = [], skillCallInfo }: ChatViewProp
               <div className="chat-turn-time">{formatTime(turn.created_at)}</div>
             </div>
           ))}
+        {loading && !streamingText && (
+          <div className="chat-turn chat-turn-assistant">
+            <div className="chat-turn-content thinking-indicator">
+              <span className="thinking-dot" />
+              <span className="thinking-dot" />
+              <span className="thinking-dot" />
+              <span className="thinking-label">AI 正在思考…</span>
+            </div>
+          </div>
+        )}
         {streamingText && (
           <div className="chat-turn chat-turn-assistant">
             <div className="chat-turn-content">
               <Markdown>{streamingText}</Markdown>
+              <span className="streaming-cursor" />
             </div>
           </div>
         )}
@@ -180,7 +227,7 @@ function ChatView({ onSend, loading, sources = [], skillCallInfo }: ChatViewProp
           value={input}
           onChange={(e) => setInput(e.target.value)}
           onKeyDown={handleKeyDown}
-          placeholder="继续追问…"
+          placeholder="输入问题…"
           rows={2}
           disabled={loading}
         />

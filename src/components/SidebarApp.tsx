@@ -100,7 +100,6 @@ function SidebarAppInner() {
   }, []);
 
   async function handleClose() {
-    closeConversation();
     setPendingCaptureImage(null);
     await getCurrentWebviewWindow().hide();
   }
@@ -191,7 +190,7 @@ function SidebarAppInner() {
 
         const hasQuestion = !!request.textQuestion;
         const questionText = request.textQuestion ?? "请解释这张截图中的内容";
-        await appendTurn("user", questionText, null, convId);
+        await appendTurn("user", questionText, null, convId, undefined, request.imageData);
 
         setThreadImageData(request.imageData);
 
@@ -227,7 +226,14 @@ function SidebarAppInner() {
       if (handleNetworkCheck()) return;
 
       try {
-        await appendTurn("user", text);
+        let convId = activeConversation?.id;
+
+        if (!convId) {
+          const meta = await startNewConversation(text.slice(0, 30));
+          convId = meta.id;
+        }
+
+        await appendTurn("user", text, null, convId);
 
         setSkillCallInfo(null);
         setSources([]);
@@ -243,9 +249,9 @@ function SidebarAppInner() {
 
         const shouldUseTools = searchMode || forceSearch;
 
-        lastRequestRef.current = { messages, enableTools: shouldUseTools };
+        lastRequestRef.current = { messages, convId, enableTools: shouldUseTools };
 
-        await streamAndSave(messages, undefined, shouldUseTools, (info) => {
+        await streamAndSave(messages, convId, shouldUseTools, (info) => {
           setSkillCallInfo(info);
           handleSkillStatus(info);
         });
@@ -258,7 +264,7 @@ function SidebarAppInner() {
         setStatus("error");
       }
     },
-    [appendTurn, turns, threadImageData, setStreamingText, setSources, setSkillCallInfo, forceSearch, clearError, setLastError],
+    [activeConversation, startNewConversation, appendTurn, turns, threadImageData, setStreamingText, setSources, setSkillCallInfo, forceSearch, clearError, setLastError],
   );
 
   const handleRetry = useCallback(async () => {
@@ -405,36 +411,8 @@ function SidebarAppInner() {
           />
         ) : viewMode === "history" ? (
           <HistoryList onBack={dismissHistory} />
-        ) : viewMode === "chat" ? (
-          <ChatView onSend={handleChatSend} loading={ctxLoading} sources={sources} skillCallInfo={skillCallInfo} />
         ) : (
-          <div className="empty-state">
-            <div className="empty-icon">
-              <svg width="48" height="48" viewBox="0 0 48 48" fill="none">
-                <rect
-                  x="4"
-                  y="8"
-                  width="40"
-                  height="32"
-                  rx="4"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  fill="none"
-                  opacity="0.4"
-                />
-                <path
-                  d="M16 24L22 30L32 18"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  opacity="0.6"
-                />
-              </svg>
-            </div>
-            <p className="empty-text">按下 Ctrl+Shift+S 截屏提问</p>
-            <p className="empty-subtext">或右键点击托盘图标开始</p>
-          </div>
+          <ChatView onSend={handleChatSend} loading={ctxLoading} sources={sources} skillCallInfo={skillCallInfo} />
         )}
       </main>
 

@@ -10,7 +10,6 @@ interface CaptureConfirmProps {
 
 function CaptureConfirm({ imageData, onSubmit, onCancel, onRecapture }: CaptureConfirmProps) {
   const [question, setQuestion] = useState('');
-  const [submitted, setSubmitted] = useState(false);
 
   function handleSubmit() {
     const request: CaptureRequest = {
@@ -19,7 +18,6 @@ function CaptureConfirm({ imageData, onSubmit, onCancel, onRecapture }: CaptureC
       timestamp: new Date().toISOString(),
     };
     onSubmit(request);
-    setSubmitted(true);
   }
 
   function handleKeyDown(e: React.KeyboardEvent) {
@@ -27,20 +25,6 @@ function CaptureConfirm({ imageData, onSubmit, onCancel, onRecapture }: CaptureC
       e.preventDefault();
       handleSubmit();
     }
-  }
-
-  if (submitted) {
-    return (
-      <div className="confirm-card">
-        <div className="confirm-success">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none">
-            <circle cx="12" cy="12" r="10" stroke="var(--accent)" strokeWidth="2" />
-            <path d="M8 12L11 15L16 9" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          <span>截图已提交，等待 AI 老师回答…</span>
-        </div>
-      </div>
-    );
   }
 
   return (

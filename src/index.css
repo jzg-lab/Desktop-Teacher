@@ -37,6 +37,13 @@
 body {
   margin: 0;
   overflow: hidden;
+}
+
+.sidebar-header,
+.sidebar-header button,
+.header-btn,
+.chat-input,
+.confirm-input {
   user-select: none;
 }
 

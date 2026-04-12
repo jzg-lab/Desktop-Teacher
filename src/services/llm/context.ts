@@ -60,17 +60,16 @@ export function turnsToMessages(
   if (nonSystemTurns.length === 0) return [];
 
   const messages: ChatMessage[] = [];
-  let firstUserTurnHandled = false;
 
   for (const turn of nonSystemTurns) {
-    if (turn.role === "user" && !firstUserTurnHandled) {
-      if (threadImageData) {
-        const userContent = buildUserContent(threadImageData, turn.content);
+    if (turn.role === "user") {
+      const turnImage = turn.image_data ?? (turn === nonSystemTurns.find(t => t.role === "user") ? threadImageData : null);
+      if (turnImage) {
+        const userContent = buildUserContent(turnImage, turn.content);
         messages.push({ role: "user", content: userContent });
       } else {
         messages.push({ role: "user", content: turn.content });
       }
-      firstUserTurnHandled = true;
     } else if (turn.role === "tool") {
       messages.push({
         role: "tool",
